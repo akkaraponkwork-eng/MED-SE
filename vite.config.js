@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'บันทึกส่งป่วยประจำวัน',
-        short_name: 'ส่งป่วย',
-        description: 'ระบบบันทึกรายชื่อผู้ป่วยประจำวัน สำหรับงานสาธารณสุขทหาร',
+        name: 'MED-SEND',
+        short_name: 'MED-SE',
+        description: 'ระบบบันทึกรายชื่อผู้ป่วยประจำวัน',
         theme_color: '#22c55e',
         background_color: '#f8fafc',
         display: 'standalone',
