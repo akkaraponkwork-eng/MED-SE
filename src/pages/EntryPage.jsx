@@ -69,12 +69,12 @@ export default function EntryPage() {
   const totalPages = Math.ceil(entries.length / itemsPerPage)
   const paginatedEntries = entries.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
-  const handleSave = async (record) => {
+  const handleSave = (record) => {
     if (record.id) {
-      await update(record)
+      update(record)
       setToast('อัปเดตข้อมูลเรียบร้อย')
     } else {
-      await add({ ...record, date })
+      add({ ...record, date })
       setToast('เพิ่มผู้ป่วยเรียบร้อย')
     }
     setShowForm(false)
@@ -86,8 +86,8 @@ export default function EntryPage() {
     setShowForm(true)
   }
 
-  const handleDelete = async (id) => {
-    await remove(id)
+  const handleDelete = (id) => {
+    remove(id)
     setConfirmDelete(null)
     setToast('ลบข้อมูลเรียบร้อย')
   }
@@ -97,8 +97,8 @@ export default function EntryPage() {
     setShowReturnForm(true)
   }
 
-  const handleSaveReturn = async (record) => {
-    await update(record)
+  const handleSaveReturn = (record) => {
+    update(record)
     setShowReturnForm(false)
     setReturnEntry(null)
     setToast(record.returned ? 'บันทึกกลับเรียบร้อย ✅' : 'ยกเลิกสถานะกลับแล้ว')

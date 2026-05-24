@@ -61,15 +61,15 @@ function buildReturnText(date, entries) {
       }
 
       if (entry.noAppointment) {
-        lines.push(`ไม่มีนัดต่อ`)
+        lines.push(`ไม่มีนัด`)
       } else if (entry.appointmentDate) {
         let apptText = ''
         if (/^\d{4}-\d{2}-\d{2}/.test(String(entry.appointmentDate))) {
-          apptText = `นัดต่อ ${thaiDate(entry.appointmentDate)}`
+          apptText = `นัด${thaiDate(entry.appointmentDate)}`
         } else {
           apptText = String(entry.appointmentDate).startsWith('นัด')
             ? entry.appointmentDate
-            : `นัดต่อ ${entry.appointmentDate}`
+            : `นัด${entry.appointmentDate}`
         }
         const apptTime = entry.appointmentTime ? ` เวลา ${formatApptTime(entry.appointmentTime)}` : ''
         lines.push(`${apptText}${apptTime}`)

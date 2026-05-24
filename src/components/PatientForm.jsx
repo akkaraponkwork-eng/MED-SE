@@ -188,6 +188,14 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
   const [selected, setSelected] = useState(editData?.patient || null)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
+  const [apptType, setApptType] = useState(() => {
+    if (editData?.noAppointment) return 'none'
+    if (!editData?.appointmentDate && !date) return 'none'
+    const d = editData?.appointmentDate || date || ''
+    if (/^\d{4}-\d{2}-\d{2}/.test(d)) return 'date'
+    return 'text'
+  })
+
   // form fields
   const [form, setForm] = useState({
     destination: editData?.destination || 'ตร.ศบบ.',
@@ -226,6 +234,9 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
       date,
       patient: selected,
       ...form,
+      appointmentDate: apptType === 'none' ? '' : form.appointmentDate,
+      appointmentTime: apptType === 'none' ? '' : form.appointmentTime,
+      noAppointment: apptType === 'none'
     }
     onSave(record)
   }
@@ -443,70 +454,101 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
               </div>
 
               {/* Appointment */}
-              <div className="section-divider"><span>วันนัดต่อ</span></div>
-
-              <label className="checkbox-label" style={{ marginBottom: '0.75rem' }}>
-                <input
-                  type="checkbox"
-                  checked={form.noAppointment}
-                  onChange={e => handleChange('noAppointment', e.target.checked)}
-                  id="no-appointment-check"
-                />
-                ไม่มีนัดต่อ
-              </label>
-
-              {!form.noAppointment && (
-                <div className="appt-row">
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">วันนัด</label>
-                    <input
-                      type="date"
-                      className="form-control"
-                      id="appt-date"
-                      value={form.appointmentDate}
-                      onChange={e => handleChange('appointmentDate', e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">เวลานัด</label>
-                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                      <select
-                        id="appt-hour"
-                        className="form-control"
-                        style={{ textAlign: 'center', flex: 1 }}
-                        value={form.appointmentTime ? form.appointmentTime.split(':')[0] : ''}
-                        onChange={e => {
-                          const h = e.target.value
-                          const m = form.appointmentTime ? (form.appointmentTime.split(':')[1] || '00') : '00'
-                          handleChange('appointmentTime', h ? `${h}:${m}` : '')
-                        }}
-                      >
-                        <option value="">hh</option>
-                        {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => (
-                          <option key={h} value={h}>{h}</option>
-                        ))}
-                      </select>
-                      <span style={{ fontWeight: 700, color: 'var(--gray-500)', fontSize: '1.1rem' }}>:</span>
-                      <select
-                        id="appt-minute"
-                        className="form-control"
-                        style={{ textAlign: 'center', flex: 1 }}
-                        value={form.appointmentTime ? (form.appointmentTime.split(':')[1] || '') : ''}
-                        onChange={e => {
-                          const m = e.target.value
-                          const h = form.appointmentTime ? (form.appointmentTime.split(':')[0] || '08') : '08'
-                          handleChange('appointmentTime', m ? `${h}:${m}` : '')
-                        }}
-                      >
-                        <option value="">mm</option>
-                        {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(m => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select>
-                    </div>
+              <div style={{ background: 'var(--gray-50)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', marginTop: '1rem' }}>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <label className="form-label" style={{ marginBottom: '0.5rem' }}>การนัดหมายครั้งถัดไป</label>
+                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    <label className="checkbox-label" style={{ padding: 0 }}>
+                      <input
+                        type="radio"
+                        checked={apptType === 'date'}
+                        onChange={() => setApptType('date')}
+                        style={{ borderRadius: '50%' }}
+                      />
+                      ระบุวันที่
+                    </label>
+                    <label className="checkbox-label" style={{ padding: 0 }}>
+                      <input
+                        type="radio"
+                        checked={apptType === 'text'}
+                        onChange={() => setApptType('text')}
+                        style={{ borderRadius: '50%' }}
+                      />
+                      ระบุเป็นข้อความ
+                    </label>
+                    <label className="checkbox-label" style={{ padding: 0 }}>
+                      <input
+                        type="radio"
+                        checked={apptType === 'none'}
+                        onChange={() => setApptType('none')}
+                        style={{ borderRadius: '50%' }}
+                      />
+                      ไม่มีนัด
+                    </label>
                   </div>
                 </div>
-              )}
+
+                {apptType !== 'none' && (
+                  <div className="appt-row">
+                    <div>
+                      <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>
+                        {apptType === 'date' ? 'วันที่นัด' : 'ข้อความนัด (เช่น นัดทำแผลทุกวัน)'}
+                      </label>
+                      {apptType === 'date' ? (
+                        <input
+                          type="date"
+                          className="form-control"
+                          value={form.appointmentDate}
+                          onChange={e => handleChange('appointmentDate', e.target.value)}
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="เช่น นัดล้างแผล"
+                          value={form.appointmentDate}
+                          onChange={e => handleChange('appointmentDate', e.target.value)}
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>เวลานัด (ถ้ามี)</label>
+                      <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                        <select
+                          className="form-control"
+                          style={{ padding: '0.5rem', textAlign: 'center' }}
+                          value={form.appointmentTime ? form.appointmentTime.split(':')[0] : ''}
+                          onChange={e => {
+                            const h = e.target.value
+                            const m = form.appointmentTime ? (form.appointmentTime.split(':')[1] || '00') : '00'
+                            handleChange('appointmentTime', h ? `${h}:${m}` : '')
+                          }}
+                        >
+                          <option value="">--</option>
+                          {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                        <span>:</span>
+                        <select
+                          className="form-control"
+                          style={{ padding: '0.5rem', textAlign: 'center' }}
+                          value={form.appointmentTime ? (form.appointmentTime.split(':')[1] || '') : ''}
+                          onChange={e => {
+                            const m = e.target.value
+                            const h = form.appointmentTime ? (form.appointmentTime.split(':')[0] || '09') : '09'
+                            handleChange('appointmentTime', m ? `${h}:${m}` : '')
+                          }}
+                        >
+                          {['00','05','10','15','20','25','30','35','40','45','50','55'].map(m => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Advanced
               <button

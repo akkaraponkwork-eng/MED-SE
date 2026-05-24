@@ -266,7 +266,7 @@ export default function ReturnForm({ entry, onSave, onClose }) {
                         onChange={() => setApptType('none')}
                         style={{ borderRadius: '50%' }}
                       />
-                      ไม่มีนัดต่อ
+                      ไม่มีนัด
                     </label>
                   </div>
                 </div>
