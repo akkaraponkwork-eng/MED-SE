@@ -99,9 +99,35 @@ export default function EntryPage() {
 
   const handleSaveReturn = (record) => {
     update(record)
+    
+    let message = record.returned ? 'บันทึกกลับเรียบร้อย ✅' : 'ยกเลิกสถานะกลับแล้ว'
+
+    // Auto-create appointment record
+    if (record.returned && !record.noAppointment && record.appointmentDate) {
+      if (/^\d{4}-\d{2}-\d{2}/.test(record.appointmentDate)) {
+        const apptDate = record.appointmentDate.slice(0, 10)
+        const existingEntries = getByDate(apptDate)
+        const alreadyExists = existingEntries.some(e => 
+          e.patient.firstName === record.patient.firstName && 
+          e.patient.lastName === record.patient.lastName
+        )
+        
+        if (!alreadyExists) {
+          add({
+            date: apptDate,
+            patient: record.patient,
+            destination: record.destination || 'ตร.ศบบ.',
+            symptoms: `นัดตรวจ/ติดตามอาการ (อ้างอิงจาก ${date})`,
+            appointmentTime: record.appointmentTime || ''
+          })
+          message = 'บันทึกกลับและลงนัดหมายล่วงหน้าเรียบร้อย ✅'
+        }
+      }
+    }
+
     setShowReturnForm(false)
     setReturnEntry(null)
-    setToast(record.returned ? 'บันทึกกลับเรียบร้อย ✅' : 'ยกเลิกสถานะกลับแล้ว')
+    setToast(message)
   }
 
   const isToday = date === new Date().toISOString().slice(0, 10)
