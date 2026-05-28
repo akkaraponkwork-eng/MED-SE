@@ -230,6 +230,7 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
   const handleSave = () => {
     if (!selected) return
     const record = {
+      ...editData,
       id: editData?.id,
       date,
       patient: selected,

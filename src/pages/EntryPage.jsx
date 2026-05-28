@@ -115,7 +115,8 @@ export default function EntryPage() {
         const existingEntries = getByDate(oldApptDate)
         const targetEntry = existingEntries.find(e =>
           e.patient.firstName === record.patient.firstName &&
-          e.patient.lastName === record.patient.lastName
+          e.patient.lastName === record.patient.lastName &&
+          e.id !== record.id
         )
         if (targetEntry) {
           remove(targetEntry.id)

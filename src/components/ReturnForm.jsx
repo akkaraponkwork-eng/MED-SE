@@ -64,6 +64,7 @@ export default function ReturnForm({ entry, onSave, onClose }) {
       onSave({
         ...entry,
         returned: false,
+        returnTime: '',
         examResult: '',
         treatment: '',
         appointmentDate: '',
@@ -79,6 +80,7 @@ export default function ReturnForm({ entry, onSave, onClose }) {
       onSave({
         ...entry,
         returned: true,
+        returnTime: entry.returnTime || new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
         examResult,
         treatment,
         appointmentDate: apptType === 'none' ? '' : appointmentDate,

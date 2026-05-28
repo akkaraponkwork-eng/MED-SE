@@ -123,28 +123,34 @@ export function useRecords() {
   }, [records])
 
   const add = useCallback(async (record) => {
-    const newRecord = normalizeRecord({ ...record, id: Date.now().toString() })
-    const updated = [...records, newRecord]
-    setRecords(updated)
-    saveCache(CACHE_KEY, updated)
+    const newRecord = normalizeRecord({ ...record, id: Date.now().toString() + Math.random().toString().slice(2, 6) })
+    setRecords(prev => {
+      const updated = [...prev, newRecord]
+      saveCache(CACHE_KEY, updated)
+      return updated
+    })
     try { await api.addRecord(newRecord) } catch {}
     return newRecord
-  }, [records])
+  }, [])
 
   const update = useCallback(async (record) => {
     const normalized = normalizeRecord(record)
-    const updated = records.map(r => r.id === normalized.id ? normalized : r)
-    setRecords(updated)
-    saveCache(CACHE_KEY, updated)
+    setRecords(prev => {
+      const updated = prev.map(r => r.id === normalized.id ? normalized : r)
+      saveCache(CACHE_KEY, updated)
+      return updated
+    })
     try { await api.updateRecord(normalized) } catch {}
-  }, [records])
+  }, [])
 
   const remove = useCallback(async (id) => {
-    const updated = records.filter(r => r.id !== id)
-    setRecords(updated)
-    saveCache(CACHE_KEY, updated)
+    setRecords(prev => {
+      const updated = prev.filter(r => r.id !== id)
+      saveCache(CACHE_KEY, updated)
+      return updated
+    })
     try { await api.deleteRecord(id) } catch {}
-  }, [records])
+  }, [])
 
   return { records, loading, error, getByDate, getDatesWithRecords, add, update, remove, refetch: fetchAll }
 }
