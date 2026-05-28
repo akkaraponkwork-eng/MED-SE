@@ -10,8 +10,22 @@ export default function ReturnForm({ entry, onSave, onClose }) {
   const [examResult, setExamResult] = useState(entry.examResult || '')
   const [treatment, setTreatment] = useState(entry.treatment || '')
   const [noAppointment, setNoAppointment] = useState(entry.noAppointment || false)
-  const [appointmentDate, setAppointmentDate] = useState(entry.appointmentDate || '')
-  
+  const [appointmentDate, setAppointmentDate] = useState(() => {
+    if (entry.appointmentDate && /^\d{4}-\d{2}-\d{2}/.test(entry.appointmentDate)) {
+      return entry.appointmentDate
+    }
+    return ''
+  })
+  const [appointmentText, setAppointmentText] = useState(() => {
+    if (entry.patient?.appointmentText) return entry.patient.appointmentText
+    if (entry.appointmentText) return entry.appointmentText
+    if (entry.appointmentDate && !/^\d{4}-\d{2}-\d{2}/.test(entry.appointmentDate)) {
+      return entry.appointmentDate
+    }
+    return ''
+  })
+  const [isEveryday, setIsEveryday] = useState(entry.patient?.isEveryday || false)
+
   // สำหรับเวลา นัดต่อ
   const [apptTime, setApptTime] = useState(() => {
     if (entry.appointmentTime) {
@@ -20,7 +34,7 @@ export default function ReturnForm({ entry, onSave, onClose }) {
     }
     return '09:00'
   })
-  
+
   const COMMON_MEDS = [
     'Paracetamol 500mg',
     'Amoxicillin 500mg',
@@ -35,6 +49,7 @@ export default function ReturnForm({ entry, onSave, onClose }) {
 
   const [apptType, setApptType] = useState(() => {
     if (entry.noAppointment) return 'none'
+    if (entry.appointmentText) return 'text'
     if (!entry.appointmentDate) return 'none'
     if (/^\d{4}-\d{2}-\d{2}/.test(entry.appointmentDate)) return 'date'
     return 'text'
@@ -46,24 +61,34 @@ export default function ReturnForm({ entry, onSave, onClose }) {
 
   const handleSave = () => {
     if (markNotReturned) {
-      onSave({ 
-        ...entry, 
-        returned: false, 
-        examResult: '', 
-        treatment: '', 
-        appointmentDate: '', 
-        appointmentTime: '', 
-        noAppointment: false 
+      onSave({
+        ...entry,
+        returned: false,
+        examResult: '',
+        treatment: '',
+        appointmentDate: '',
+        appointmentTime: '',
+        noAppointment: false,
+        patient: {
+          ...entry.patient,
+          appointmentText: '',
+          isEveryday: false
+        }
       })
     } else {
-      onSave({ 
-        ...entry, 
+      onSave({
+        ...entry,
         returned: true,
         examResult,
         treatment,
         appointmentDate: apptType === 'none' ? '' : appointmentDate,
         appointmentTime: apptType === 'none' ? '' : apptTime,
-        noAppointment: apptType === 'none'
+        noAppointment: apptType === 'none',
+        patient: {
+          ...entry.patient,
+          appointmentText: apptType === 'text' ? appointmentText : '',
+          isEveryday: apptType === 'text' && isEveryday
+        }
       })
     }
   }
@@ -104,31 +129,31 @@ export default function ReturnForm({ entry, onSave, onClose }) {
           }
         }
       )
-      
+
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
       let meds = []
       let currentMed = ''
-      
+
       for (let line of lines) {
         if (line.includes('โรงพยาบาล') || line.includes('พลฯ') || line.includes('จ.ส.อ.') || line.includes('จ.ส.ท.') || line.includes('จ.ส.ต.') || line.includes('ส.อ.') || line.includes('ส.ท.') || line.includes('ส.ต.')) continue
-        
+
         let matchTabs = line.match(/^(\d+)\s*(TAB|เม็ด)/i) || line.match(/(\d+)\s*(TAB|เม็ด)$/i)
         if (matchTabs && currentMed) {
           meds.push(`-${currentMed.trim()} ${matchTabs[1]} ${matchTabs[2]}`)
           currentMed = ''
           continue
         }
-        
+
         if (/^[a-zA-Z]/.test(line) && !line.includes('HN:')) {
           if (currentMed) currentMed += ' ' + line
           else currentMed = line
         }
       }
-      
+
       const parsedText = meds.length > 0 ? meds.join('\n') : text
       const prefix = treatment ? treatment + '\n' : ''
       setTreatment(prefix + parsedText)
-      
+
     } catch (err) {
       alert('สแกนไม่สำเร็จ: ' + err.message)
     } finally {
@@ -157,7 +182,7 @@ export default function ReturnForm({ entry, onSave, onClose }) {
               <span>{p.platoon} เลขที่ {p.number}</span>
             </div>
           </div>
-          
+
           <div style={{ marginBottom: '1rem', fontSize: '0.85rem', color: 'var(--gray-600)' }}>
             <strong>อาการตอนไป:</strong> {entry.symptoms || '-'}
           </div>
@@ -272,28 +297,40 @@ export default function ReturnForm({ entry, onSave, onClose }) {
                 </div>
 
                 {apptType !== 'none' && (
-                  <div className="appt-row">
-                    <div>
-                      <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>
-                        {apptType === 'date' ? 'วันที่นัด' : 'ข้อความนัด (เช่น นัดทำแผลทุกวัน)'}
-                      </label>
-                      {apptType === 'date' ? (
-                        <input
-                          type="date"
-                          className="form-control"
-                          value={appointmentDate}
-                          onChange={e => setAppointmentDate(e.target.value)}
-                        />
-                      ) : (
+                <div className="appt-row">
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>
+                      {apptType === 'date' ? 'วันที่นัด' : 'วันที่นัด (จำเป็นต้องระบุเพื่อลงนัดล่วงหน้า)'}
+                    </label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={appointmentDate}
+                      onChange={e => setAppointmentDate(e.target.value)}
+                    />
+                    {apptType === 'text' && (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>
+                          ข้อความนัด (เช่น ทำแผล)
+                        </label>
                         <input
                           type="text"
                           className="form-control"
                           placeholder="เช่น นัดล้างแผล"
-                          value={appointmentDate}
-                          onChange={e => setAppointmentDate(e.target.value)}
+                          value={appointmentText}
+                          onChange={e => setAppointmentText(e.target.value)}
                         />
-                      )}
-                    </div>
+                        <label className="checkbox-label" style={{ marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={isEveryday}
+                            onChange={e => setIsEveryday(e.target.checked)}
+                          />
+                          นัดต่อเนื่องทุกวัน
+                        </label>
+                      </div>
+                    )}
+                  </div>
                     <div>
                       <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>เวลานัด (ถ้ามี)</label>
                       <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
@@ -315,7 +352,7 @@ export default function ReturnForm({ entry, onSave, onClose }) {
                           value={apptMinute || '00'}
                           onChange={e => setApptTime(`${apptHour || '09'}:${e.target.value}`)}
                         >
-                          {['00','05','10','15','20','25','30','35','40','45','50','55'].map(m => (
+                          {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(m => (
                             <option key={m} value={m}>{m}</option>
                           ))}
                         </select>

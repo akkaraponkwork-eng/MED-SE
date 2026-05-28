@@ -6,6 +6,7 @@ import PatientForm from '../components/PatientForm'
 import DailyReport from '../components/DailyReport'
 import ReturnForm from '../components/ReturnForm'
 import ReturnReport from '../components/ReturnReport'
+import PatientDetailsModal from '../components/PatientDetailsModal'
 
 const THAI_MONTHS_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
 const THAI_MONTHS_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
@@ -99,25 +100,60 @@ export default function EntryPage() {
 
   const handleSaveReturn = (record) => {
     update(record)
-    
+
     let message = record.returned ? 'บันทึกกลับเรียบร้อย ✅' : 'ยกเลิกสถานะกลับแล้ว'
+
+    // Cleanup old appointment if cancelled, changed to no appointment, or date changed
+    if (returnEntry?.appointmentDate && /^\d{4}-\d{2}-\d{2}/.test(returnEntry.appointmentDate)) {
+      const oldApptDate = returnEntry.appointmentDate.slice(0, 10)
+      const shouldDeleteOld = 
+        !record.returned || 
+        record.noAppointment || 
+        (record.appointmentDate && record.appointmentDate.slice(0, 10) !== oldApptDate)
+
+      if (shouldDeleteOld) {
+        const existingEntries = getByDate(oldApptDate)
+        const targetEntry = existingEntries.find(e =>
+          e.patient.firstName === record.patient.firstName &&
+          e.patient.lastName === record.patient.lastName
+        )
+        if (targetEntry) {
+          remove(targetEntry.id)
+          if (!record.returned || record.noAppointment) {
+            message += ' (ลบนัดล่วงหน้าเดิมแล้ว)'
+          }
+        }
+      }
+    }
 
     // Auto-create appointment record
     if (record.returned && !record.noAppointment && record.appointmentDate) {
       if (/^\d{4}-\d{2}-\d{2}/.test(record.appointmentDate)) {
         const apptDate = record.appointmentDate.slice(0, 10)
         const existingEntries = getByDate(apptDate)
-        const alreadyExists = existingEntries.some(e => 
-          e.patient.firstName === record.patient.firstName && 
+        const alreadyExists = existingEntries.some(e =>
+          e.patient.firstName === record.patient.firstName &&
           e.patient.lastName === record.patient.lastName
         )
-        
+
         if (!alreadyExists) {
+          const textData = record.patient?.appointmentText || ''
+          const isEveryday = record.patient?.isEveryday || false
+          let noteText = ''
+          if (isEveryday) {
+            noteText = `นัด${textData}ทุกวัน เวลา ${record.appointmentTime}`
+          } else if (textData) {
+            noteText = `นัด${textData} เวลา ${record.appointmentTime}`
+          } else {
+            noteText = `นัดติดตามอาการ เวลา ${record.appointmentTime}`
+          }
+
           add({
             date: apptDate,
             patient: record.patient,
             destination: record.destination || 'ตร.ศบบ.',
-            symptoms: `นัดตรวจ/ติดตามอาการ (อ้างอิงจาก ${date})`,
+            symptoms: record.symptoms || 'ไม่มี',
+            notes: noteText.trim(),
             appointmentTime: record.appointmentTime || ''
           })
           message = 'บันทึกกลับและลงนัดหมายล่วงหน้าเรียบร้อย ✅'
@@ -444,85 +480,10 @@ export default function EntryPage() {
       )}
 
       {/* Patient Details Modal */}
-      {viewDetailsEntry && (
-        <div className="modal-overlay" onClick={() => setViewDetailsEntry(null)}>
-          <div className="modal" style={{ maxHeight: '80vh', borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0' }} onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <span style={{ fontSize: '1.2rem' }}>📄</span>
-              <h2 className="modal-title">รายละเอียดข้อมูลผู้ป่วย</h2>
-              <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setViewDetailsEntry(null)}>
-                <X size={18} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <div style={{ marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid var(--gray-100)' }}>
-                <strong style={{ fontSize: '1.1rem', color: 'var(--gray-900)' }}>
-                  {viewDetailsEntry.patient.rank} {viewDetailsEntry.patient.firstName} {viewDetailsEntry.patient.lastName}
-                </strong>
-                <div style={{ fontSize: '0.875rem', color: 'var(--gray-500)', marginTop: '0.25rem' }}>
-                  {viewDetailsEntry.patient.platoon} เลขที่ {viewDetailsEntry.patient.number}
-                </div>
-              </div>
-
-              <div className="patient-detail" style={{ fontSize: '0.95rem' }}>
-                {viewDetailsEntry.symptoms && (
-                  <div className="patient-detail-row">
-                    <span className="patient-detail-label">อาการ:</span>
-                    <span>{viewDetailsEntry.symptoms}</span>
-                  </div>
-                )}
-                {viewDetailsEntry.examResult && (
-                  <div className="patient-detail-row">
-                    <span className="patient-detail-label">ผลการตรวจ:</span>
-                    <span>{viewDetailsEntry.examResult}</span>
-                  </div>
-                )}
-                {viewDetailsEntry.treatment && (
-                  <div className="patient-detail-row">
-                    <span className="patient-detail-label">การรักษา:</span>
-                    <span style={{ whiteSpace: 'pre-line' }}>{viewDetailsEntry.treatment}</span>
-                  </div>
-                )}
-                {viewDetailsEntry.notes && (
-                  <div className="patient-detail-row">
-                    <span className="patient-detail-label">หมายเหตุ:</span>
-                    <span>{viewDetailsEntry.notes}</span>
-                  </div>
-                )}
-                {!viewDetailsEntry.symptoms && !viewDetailsEntry.examResult && !viewDetailsEntry.treatment && !viewDetailsEntry.notes && (
-                  <div style={{ color: 'var(--gray-400)', fontStyle: 'italic', padding: '1rem 0', textAlign: 'center' }}>
-                    ยังไม่มีข้อมูลรายละเอียด
-                  </div>
-                )}
-              </div>
-
-              {viewDetailsEntry.noAppointment ? (
-                <div className="no-appt" style={{ marginTop: '1.5rem' }}>ไม่มีนัดต่อ</div>
-              ) : viewDetailsEntry.appointmentDate ? (
-                <div className="patient-appt" style={{ marginTop: '1.5rem' }}>
-                  📅 นัดต่อ {safeApptDate(viewDetailsEntry.appointmentDate)}{viewDetailsEntry.appointmentTime && ` เวลา ${viewDetailsEntry.appointmentTime} น.`}
-                </div>
-              ) : null}
-
-              {/* {viewDetailsEntry.returned && (
-                <div style={{
-                  marginTop: '1rem',
-                  padding: '0.75rem 1rem',
-                  background: '#f0fdf4',
-                  borderRadius: 'var(--radius-md)',
-                  borderLeft: '4px solid var(--green-500)',
-                  fontSize: '0.875rem',
-                  color: 'var(--green-800)',
-                }}>
-                  <strong>🏠 กลับหน่วยแล้ว</strong><br />
-                  เวลา: {viewDetailsEntry.returnTime} น.
-                  {viewDetailsEntry.returnNotes && <div style={{ marginTop: '0.25rem', color: 'var(--gray-600)' }}>{viewDetailsEntry.returnNotes}</div>}
-                </div>
-              )} */}
-            </div>
-          </div>
-        </div>
-      )}
+      <PatientDetailsModal
+        entry={viewDetailsEntry}
+        onClose={() => setViewDetailsEntry(null)}
+      />
 
       {/* Toast */}
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}

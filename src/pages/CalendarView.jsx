@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Plus, PieChart, X } from 'lucide-react'
 import { useRecords } from '../hooks/useRecords'
+import PatientDetailsModal from '../components/PatientDetailsModal'
 
 const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 const THAI_MONTHS_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
@@ -25,6 +26,8 @@ export default function CalendarView() {
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate())
 
   const [showDestModal, setShowDestModal] = useState(null)
+  const [showStatusModal, setShowStatusModal] = useState(null)
+  const [viewDetailsEntry, setViewDetailsEntry] = useState(null)
 
   const datesWithData = new Set(getDatesWithRecords())
 
@@ -77,14 +80,24 @@ export default function CalendarView() {
 
       {/* Stats Row 2: สถานะกลับ */}
       <div className="stats-grid stats-2" style={{ marginBottom: '1.25rem' }}>
-        <div className="stat-card stat-card-green">
+        <div 
+          className="stat-card stat-card-green"
+          style={{ cursor: 'pointer', transition: 'all 0.2s' }}
+          onClick={() => todayReturned > 0 && setShowStatusModal('returned')}
+        >
           <div className="stat-number" style={{ color: 'var(--green-600)' }}>{todayReturned}</div>
           <div className="stat-label">กลับแล้ว</div>
         </div>
-        <div className="stat-card" style={{
-          borderColor: todayNotReturned > 0 ? '#fed7aa' : 'var(--gray-100)',
-          background: todayNotReturned > 0 ? '#fff7ed' : 'white',
-        }}>
+        <div 
+          className="stat-card" 
+          style={{
+            borderColor: todayNotReturned > 0 ? '#fed7aa' : 'var(--gray-100)',
+            background: todayNotReturned > 0 ? '#fff7ed' : 'white',
+            cursor: 'pointer', 
+            transition: 'all 0.2s'
+          }}
+          onClick={() => todayNotReturned > 0 && setShowStatusModal('notReturned')}
+        >
           <div className="stat-number" style={{ color: todayNotReturned > 0 ? '#c2410c' : 'var(--gray-400)' }}>
             {todayNotReturned}
           </div>
@@ -272,12 +285,13 @@ export default function CalendarView() {
             <div className="modal-body">
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {(showDestModal === 'ตร.ศบบ.' ? todayTrrRecords : todayHospRecords).map((r, i) => (
-                  <li key={r.id} style={{ 
+                  <li key={r.id} onClick={() => setViewDetailsEntry(r)} style={{ 
                     background: showDestModal === 'ตร.ศบบ.' ? '#eff6ff' : '#f5f3ff', 
                     padding: '0.75rem', 
                     borderRadius: 'var(--radius-sm)', 
                     display: 'flex', flexDirection: 'column', gap: '0.2rem',
-                    border: `1px solid ${showDestModal === 'ตร.ศบบ.' ? '#bfdbfe' : '#ddd6fe'}`
+                    border: `1px solid ${showDestModal === 'ตร.ศบบ.' ? '#bfdbfe' : '#ddd6fe'}`,
+                    cursor: 'pointer'
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <strong style={{ fontSize: '0.95rem', color: showDestModal === 'ตร.ศบบ.' ? '#1e3a8a' : '#4c1d95' }}>
@@ -304,6 +318,58 @@ export default function CalendarView() {
           </div>
         </div>
       )}
+
+      {/* Status Modal */}
+      {showStatusModal && (
+        <div className="modal-overlay center" onClick={() => setShowStatusModal(null)}>
+          <div className="modal" style={{ maxHeight: '80vh' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span style={{ fontSize: '1.2rem' }}>{showStatusModal === 'returned' ? '✅' : '⏳'}</span>
+              <h2 className="modal-title">รายชื่อผู้ป่วย ({showStatusModal === 'returned' ? 'กลับแล้ว' : 'ยังไม่กลับ'})</h2>
+              <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowStatusModal(null)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {todayRecords.filter(r => showStatusModal === 'returned' ? r.returned : !r.returned).map((r, i) => (
+                  <li key={r.id} onClick={() => setViewDetailsEntry(r)} style={{ 
+                    background: showStatusModal === 'returned' ? '#f0fdf4' : '#fff7ed', 
+                    padding: '0.75rem', 
+                    borderRadius: 'var(--radius-sm)', 
+                    display: 'flex', flexDirection: 'column', gap: '0.2rem',
+                    border: `1px solid ${showStatusModal === 'returned' ? '#bbf7d0' : '#fed7aa'}`,
+                    cursor: 'pointer'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <strong style={{ fontSize: '0.95rem', color: showStatusModal === 'returned' ? '#166534' : '#9a3412' }}>
+                        {i + 1}. {r.patient?.rank}{r.patient?.firstName} {r.patient?.lastName}
+                      </strong>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--gray-600)', background: 'white', padding: '0.15rem 0.4rem', borderRadius: '4px', border: '1px solid var(--gray-200)' }}>
+                        {r.destination || 'ตร.ศบบ.'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--gray-500)', display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+                      <span style={{ background: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--gray-200)' }}>
+                        หมวด: {r.patient?.platoon || '-'}
+                      </span>
+                      <span style={{ background: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--gray-200)' }}>
+                        เลขที่: {r.patient?.number || '-'}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Patient Details Modal */}
+      <PatientDetailsModal
+        entry={viewDetailsEntry}
+        onClose={() => setViewDetailsEntry(null)}
+      />
     </>
   )
 }

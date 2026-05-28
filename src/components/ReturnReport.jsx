@@ -63,16 +63,28 @@ function buildReturnText(date, entries) {
       if (entry.noAppointment) {
         lines.push(`ไม่มีนัด`)
       } else if (entry.appointmentDate) {
-        let apptText = ''
-        if (/^\d{4}-\d{2}-\d{2}/.test(String(entry.appointmentDate))) {
-          apptText = `นัด${thaiDate(entry.appointmentDate)}`
-        } else {
-          apptText = String(entry.appointmentDate).startsWith('นัด')
-            ? entry.appointmentDate
-            : `นัด${entry.appointmentDate}`
-        }
+        const textData = entry.patient?.appointmentText || entry.appointmentText || ''
+        const isEveryday = entry.patient?.isEveryday || false
         const apptTime = entry.appointmentTime ? ` เวลา ${formatApptTime(entry.appointmentTime)}` : ''
-        lines.push(`${apptText}${apptTime}`)
+
+        let finalApptText = ''
+        if (isEveryday) {
+          finalApptText = `นัด${textData}ทุกวัน${apptTime}`
+        } else {
+          let dateText = ''
+          if (/^\d{4}-\d{2}-\d{2}/.test(String(entry.appointmentDate))) {
+            dateText = `นัด${thaiDate(entry.appointmentDate)}`
+          } else {
+            dateText = String(entry.appointmentDate).startsWith('นัด')
+              ? entry.appointmentDate
+              : `นัด${entry.appointmentDate}`
+          }
+          finalApptText = `${dateText}${apptTime}`
+          if (textData) {
+            finalApptText += ` (${textData})`
+          }
+        }
+        lines.push(finalApptText)
       }
 
       if (entry.notes && !entry.examResult && !entry.treatment) {
