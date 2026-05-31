@@ -15,6 +15,24 @@ export default function Layout({ children, user, onLogout }) {
     if (window.confirm('ต้องการออกจากระบบ?')) onLogout()
   }
 
+  const handleForceUpdate = () => {
+    if (window.confirm('ต้องการรีเฟรชเพื่ออัปเดตแอปให้เป็นเวอร์ชันล่าสุดหรือไม่? (สำหรับแก้ปัญหาแคชค้าง)')) {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for (let reg of registrations) reg.unregister()
+        })
+      }
+      if ('caches' in window) {
+        caches.keys().then(keys => {
+          Promise.all(keys.map(key => caches.delete(key)))
+        })
+      }
+      setTimeout(() => {
+        window.location.reload()
+      }, 500)
+    }
+  }
+
   return (
     <div className="layout">
       <nav className="navbar">
@@ -35,6 +53,14 @@ export default function Layout({ children, user, onLogout }) {
             <User size={13} />
             {user}
           </div>
+          <button
+            className="btn btn-ghost btn-icon btn-sm"
+            onClick={handleForceUpdate}
+            title="รีเฟรชแอป (อัปเดตเวอร์ชัน)"
+            style={{ color: 'var(--green-700)' }}
+          >
+            <RefreshCw size={18} />
+          </button>
           <button
             id="logout-btn"
             className="btn btn-ghost btn-icon btn-sm"
