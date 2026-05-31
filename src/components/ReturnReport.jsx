@@ -5,9 +5,16 @@ const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.
 
 function thaiDate(dateStr) {
   if (!dateStr) return ''
+  // YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}/.test(String(dateStr))) {
     const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(Number)
     if (m >= 1 && m <= 12) return `${d} ${THAI_MONTHS[m - 1]} ${(y + 543).toString().slice(-2)}`
+  }
+  // Thai date string เช่น "19 มิ.ย. 2569" → "19 มิ.ย. 69"
+  const thaiMatch = String(dateStr).match(/^(\d{1,2})\s*([\u0E00-\u0E7F.]+)\s*(\d{4})$/)
+  if (thaiMatch) {
+    const [, d, m, y] = thaiMatch
+    return `${d} ${m.trim()} ${String(y).slice(-2)}`
   }
   const dt = new Date(dateStr)
   if (!isNaN(dt.getTime())) {
@@ -25,7 +32,7 @@ function formatApptTime(timeStr) {
 
 function buildReturnText(date, entries) {
   const lines = []
-  lines.push(`ส่งป่วยประจำวันที่ ${thaiDate(date)}`)
+  lines.push(`กลับจาก ตร.ฯ ประจำวันที่ ${thaiDate(date)}`)
 
   const groups = {}
   entries.forEach(entry => {
@@ -39,11 +46,11 @@ function buildReturnText(date, entries) {
 
   destKeys.forEach((dest, groupIdx) => {
     const icon = dest === 'ตร.ศบบ.' ? '🏠' : '🏥'
-    lines.push(`${icon} ส่งป่วย ${dest}`)
+    lines.push(`${icon} กลับจาก ${dest}`)
 
     groups[dest].forEach((entry, idx) => {
-      const p = entry.patient
-      const name = `${p.rank} ${p.firstName} ${p.lastName}`
+      const p = entry.patient || {}
+      const name = [p.rank, p.firstName, p.lastName].filter(Boolean).join(' ') || 'ไม่ระบุชื่อ'
       const platoonPart = p.platoon ? ` หมวด ${p.platoon}` : ''
       const numPart = p.number ? ` เลขที่ ${p.number}` : ''
       const meta = platoonPart || numPart ? ` ${platoonPart}${numPart}` : ''
@@ -61,16 +68,24 @@ function buildReturnText(date, entries) {
       }
 
       if (entry.noAppointment) {
-        lines.push(`ไม่มีนัด`)
-      } else if (entry.appointmentDate) {
+        lines.push(`ไม่มีนัดต่อ`)
+      } else if (entry.appointmentDate || entry.patient?.appointmentText) {
         const textData = entry.patient?.appointmentText || entry.appointmentText || ''
         const isEveryday = entry.patient?.isEveryday || false
         const apptTime = entry.appointmentTime ? ` เวลา ${formatApptTime(entry.appointmentTime)}` : ''
 
-        let finalApptText = ''
-        if (isEveryday) {
-          finalApptText = `นัด${textData}ทุกวัน${apptTime}`
-        } else {
+        // ข้อมูลเก่าที่เก็บ "ไม่มีนัดต่อ" เป็น text ให้แสดงเป็นไม่มีนัดต่อ
+        if (textData === 'ไม่มีนัดต่อ') {
+          lines.push('ไม่มีนัดต่อ')
+        } else if (isEveryday) {
+          // ลบ "ทุกวัน" ที่อาจซ้ำอยู่ใน textData ก่อน
+          const baseText = textData.replace(/ทุกวัน\s*$/, '').trim()
+          const reasonText = baseText.startsWith('นัด') ? baseText : `นัด${baseText}`
+          lines.push(`${reasonText}ทุกวัน${apptTime}`)
+        } else if (textData) {
+          const reasonText = textData.startsWith('นัด') ? textData : `นัด${textData}`
+          lines.push(`${reasonText}${apptTime}`)
+        } else if (entry.appointmentDate) {
           let dateText = ''
           if (/^\d{4}-\d{2}-\d{2}/.test(String(entry.appointmentDate))) {
             dateText = `นัด${thaiDate(entry.appointmentDate)}`
@@ -79,12 +94,8 @@ function buildReturnText(date, entries) {
               ? entry.appointmentDate
               : `นัด${entry.appointmentDate}`
           }
-          finalApptText = `${dateText}${apptTime}`
-          if (textData) {
-            finalApptText += ` (${textData})`
-          }
+          lines.push(`${dateText}${apptTime}`)
         }
-        lines.push(finalApptText)
       }
 
       if (entry.notes && !entry.examResult && !entry.treatment) {

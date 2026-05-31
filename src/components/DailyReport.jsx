@@ -10,6 +10,12 @@ function thaiDate(dateStr) {
     const [y, m, d] = String(dateStr).slice(0, 10).split('-').map(Number)
     if (m >= 1 && m <= 12) return `${d} ${THAI_MONTHS[m - 1]} ${(y + 543).toString().slice(-2)}`
   }
+  // Thai date string เช่น "19 มิ.ย. 2569" → "19 มิ.ย. 69"
+  const thaiMatch = String(dateStr).match(/^(\d{1,2})\s*([\u0E00-\u0E7F.]+)\s*(\d{4})$/)
+  if (thaiMatch) {
+    const [, d, m, y] = thaiMatch
+    return `${d} ${m.trim()} ${String(y).slice(-2)}`
+  }
   // raw Date string fallback
   const dt = new Date(dateStr)
   if (!isNaN(dt.getTime())) {
@@ -49,8 +55,8 @@ function buildReportText(date, entries) {
     lines.push(`${icon} ส่งป่วย ${dest}`)
 
     groups[dest].forEach((entry, idx) => {
-      const p = entry.patient
-      const name = `${p.rank} ${p.firstName} ${p.lastName}`
+      const p = entry.patient || {}
+      const name = [p.rank, p.firstName, p.lastName].filter(Boolean).join(' ') || 'ไม่ระบุชื่อ'
       // หมวด X เลขที่ XXX
       const platoonPart = p.platoon ? ` หมวด ${p.platoon} ` : ''
       const numPart = p.number ? ` เลขที่ ${p.number}` : ''
@@ -69,18 +75,32 @@ function buildReportText(date, entries) {
       }
 
       if (entry.noAppointment) {
-        lines.push(` `)
-      } else if (entry.appointmentDate) {
-        let apptText = ''
-        if (/^\d{4}-\d{2}-\d{2}/.test(String(entry.appointmentDate))) {
-          apptText = `นัด${thaiDate(entry.appointmentDate)}`
-        } else {
-          apptText = String(entry.appointmentDate).startsWith('นัด')
-            ? entry.appointmentDate
-            : `นัด${entry.appointmentDate}`
-        }
+        // ไม่พิมพ์อะไรเลยถ้าไม่มีนัด เพื่อไม่ให้เกิดบรรทัดว่างซ้อนกัน
+      } else if (entry.appointmentDate || entry.patient?.appointmentText) {
+        const textData = entry.patient?.appointmentText || entry.appointmentText || ''
+        const isEveryday = entry.patient?.isEveryday || false
         const apptTime = entry.appointmentTime ? ` เวลา ${formatApptTime(entry.appointmentTime)}` : ''
-        lines.push(`${apptText}${apptTime}`)
+
+        if (textData === 'ไม่มีนัดต่อ') {
+          // ไม่พิมพ์อะไรเลย
+        } else if (isEveryday) {
+          const baseText = textData.replace(/ทุกวัน\s*$/, '').trim()
+          const reasonText = baseText.startsWith('นัด') ? baseText : `นัด${baseText}`
+          lines.push(`${reasonText}ทุกวัน${apptTime}`)
+        } else if (textData) {
+          const reasonText = textData.startsWith('นัด') ? textData : `นัด${textData}`
+          lines.push(`${reasonText}${apptTime}`)
+        } else if (entry.appointmentDate) {
+          let dateText = ''
+          if (/^\d{4}-\d{2}-\d{2}/.test(String(entry.appointmentDate))) {
+            dateText = `นัด${thaiDate(entry.appointmentDate)}`
+          } else {
+            dateText = String(entry.appointmentDate).startsWith('นัด')
+              ? entry.appointmentDate
+              : `นัด${entry.appointmentDate}`
+          }
+          lines.push(`${dateText}${apptTime}`)
+        }
       }
 
       if (entry.notes && !entry.examResult && !entry.treatment) {

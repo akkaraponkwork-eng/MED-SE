@@ -1,9 +1,11 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { LogOut, Home, User, Calendar } from 'lucide-react'
+import { LogOut, Home, User, Calendar, WifiOff, RefreshCw } from 'lucide-react'
+import { useSyncStatus } from '../hooks/useSyncContext'
 
 export default function Layout({ children, user, onLogout }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const syncStatus = useSyncStatus()
 
   const thaiDate = new Date().toLocaleDateString('th-TH', {
     weekday: 'short', day: 'numeric', month: 'short', year: '2-digit'
@@ -43,6 +45,40 @@ export default function Layout({ children, user, onLogout }) {
           </button>
         </div>
       </nav>
+
+      {/* Sync Status Banner */}
+      {syncStatus === 'offline' && (
+        <div style={{
+          background: '#fff7ed',
+          borderBottom: '1px solid #fed7aa',
+          padding: '0.35rem 1rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          fontSize: '0.78rem',
+          color: '#c2410c',
+          fontWeight: 600,
+        }}>
+          <WifiOff size={13} />
+          ออฟไลน์ — ข้อมูลอาจไม่เป็นปัจจุบัน (ระบบใช้ข้อมูลจาก cache)
+        </div>
+      )}
+      {syncStatus === 'syncing' && (
+        <div style={{
+          background: '#f0fdf4',
+          borderBottom: '1px solid #bbf7d0',
+          padding: '0.35rem 1rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          fontSize: '0.78rem',
+          color: '#15803d',
+          fontWeight: 600,
+        }}>
+          <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} />
+          กำลังซิงค์ข้อมูล...
+        </div>
+      )}
 
       <main className="main-content fade-in">
         {children}

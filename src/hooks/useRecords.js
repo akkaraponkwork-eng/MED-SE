@@ -40,13 +40,21 @@ function normalizeDate(val) {
 
 // Normalize record ให้ทุก field อยู่ใน format ที่ถูกต้อง
 function normalizeRecord(r) {
+  let patientObj = r.patient || {}
+  // ป้องกันกรณี patient ถูกบันทึกเป็น string จาก cache หรือ API
+  if (typeof patientObj === 'string') {
+    try { patientObj = JSON.parse(patientObj) } catch { patientObj = {} }
+  }
+
   return {
     ...r,
+    patient: patientObj,
     date: normalizeDate(r.date),
     appointmentDate: normalizeDate(r.appointmentDate),
     appointmentTime: normalizeTime(r.appointmentTime),
     destination: r.destination || 'ตร.ศบบ.',
     returned: r.returned === true || r.returned === 'TRUE',
+    noAppointment: r.noAppointment === true || r.noAppointment === 'TRUE',
     returnTime: normalizeTime(r.returnTime),
     returnNotes: r.returnNotes || '',
   }
@@ -88,6 +96,7 @@ export function usePatients() {
   return { patients, loading, error, refetch: fetchPatients }
 }
 
+// syncStatus: 'synced' | 'syncing' | 'offline'
 export function useRecords() {
   const [records, setRecords] = useState(() => {
     const cached = loadCache(CACHE_KEY) || []
@@ -95,17 +104,21 @@ export function useRecords() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [syncStatus, setSyncStatus] = useState('synced')
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setSyncStatus('syncing')
     try {
       const data = await api.getAllRecords()
       const normalized = data.map(normalizeRecord)
       setRecords(normalized)
       saveCache(CACHE_KEY, normalized)
+      setSyncStatus('synced')
     } catch (err) {
       setError(err.message)
+      setSyncStatus('offline')
     } finally {
       setLoading(false)
     }
@@ -129,7 +142,12 @@ export function useRecords() {
       saveCache(CACHE_KEY, updated)
       return updated
     })
-    try { await api.addRecord(newRecord) } catch {}
+    try {
+      await api.addRecord(newRecord)
+      setSyncStatus('synced')
+    } catch {
+      setSyncStatus('offline')
+    }
     return newRecord
   }, [])
 
@@ -140,7 +158,12 @@ export function useRecords() {
       saveCache(CACHE_KEY, updated)
       return updated
     })
-    try { await api.updateRecord(normalized) } catch {}
+    try {
+      await api.updateRecord(normalized)
+      setSyncStatus('synced')
+    } catch {
+      setSyncStatus('offline')
+    }
   }, [])
 
   const remove = useCallback(async (id) => {
@@ -149,8 +172,13 @@ export function useRecords() {
       saveCache(CACHE_KEY, updated)
       return updated
     })
-    try { await api.deleteRecord(id) } catch {}
+    try {
+      await api.deleteRecord(id)
+      setSyncStatus('synced')
+    } catch {
+      setSyncStatus('offline')
+    }
   }, [])
 
-  return { records, loading, error, getByDate, getDatesWithRecords, add, update, remove, refetch: fetchAll }
+  return { records, loading, error, syncStatus, getByDate, getDatesWithRecords, add, update, remove, refetch: fetchAll }
 }

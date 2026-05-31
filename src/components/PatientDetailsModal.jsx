@@ -36,7 +36,7 @@ export default function PatientDetailsModal({ entry, onClose }) {
               {entry.patient?.rank} {entry.patient?.firstName} {entry.patient?.lastName}
             </strong>
             <div style={{ fontSize: '0.875rem', color: 'var(--gray-500)', marginTop: '0.25rem' }}>
-              หมวด {entry.patient?.platoon} เลขที่ {entry.patient?.number}
+              {entry.patient?.platoon && String(entry.patient.platoon).startsWith('หมวด') ? entry.patient.platoon : `หมวด ${entry.patient?.platoon}`} เลขที่ {entry.patient?.number}
             </div>
           </div>
 
@@ -74,10 +74,11 @@ export default function PatientDetailsModal({ entry, onClose }) {
 
           {entry.noAppointment ? (
             <div className="no-appt" style={{ marginTop: '1.5rem' }}>ไม่มีนัดต่อ</div>
-          ) : entry.appointmentDate ? (
+          ) : (entry.appointmentDate || entry.patient?.appointmentText || entry.appointmentText) ? (
             <div className="patient-appt" style={{ marginTop: '1.5rem' }}>
-              📅 นัดต่อ {safeApptDate(entry.appointmentDate)}{entry.appointmentTime && ` เวลา ${entry.appointmentTime} น.`}
+              {entry.appointmentDate && `📅 นัดต่อ ${safeApptDate(entry.appointmentDate)}${entry.appointmentTime ? ` เวลา ${entry.appointmentTime} น.` : ''}`}
               {entry.patient?.appointmentText && <div style={{marginTop: '0.25rem', color: 'var(--gray-600)', fontSize: '0.9rem'}}>📝 {entry.patient.appointmentText} {entry.patient.isEveryday && '(ต่อเนื่องทุกวัน)'}</div>}
+              {(!entry.appointmentDate && entry.appointmentTime) && <div style={{marginTop: '0.25rem', color: 'var(--gray-600)', fontSize: '0.9rem'}}>⏰ เวลา {entry.appointmentTime} น.</div>}
             </div>
           ) : null}
         </div>

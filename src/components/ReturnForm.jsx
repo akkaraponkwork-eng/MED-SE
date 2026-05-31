@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { X, CheckCircle, XCircle } from 'lucide-react'
-import ImageCropperModal from './ImageCropperModal'
 
 export default function ReturnForm({ entry, onSave, onClose }) {
-  const p = entry.patient
-  const fullName = `${p.rank} ${p.firstName} ${p.lastName}`
+  const p = entry.patient || {}
+  const fullName = [p.rank, p.firstName, p.lastName].filter(Boolean).join(' ') || 'ไม่ระบุชื่อ'
 
   // ดึงข้อมูลเดิมมาแสดง
   const [examResult, setExamResult] = useState(entry.examResult || '')
@@ -49,15 +48,13 @@ export default function ReturnForm({ entry, onSave, onClose }) {
 
   const [apptType, setApptType] = useState(() => {
     if (entry.noAppointment) return 'none'
-    if (entry.appointmentText) return 'text'
+    if (entry.patient?.appointmentText || entry.appointmentText) return 'text'
     if (!entry.appointmentDate) return 'none'
     if (/^\d{4}-\d{2}-\d{2}/.test(entry.appointmentDate)) return 'date'
     return 'text'
   })
 
   const [markNotReturned, setMarkNotReturned] = useState(false)
-
-  const [isOcrLoading, setIsOcrLoading] = useState(false)
 
   const handleSave = () => {
     if (markNotReturned) {
@@ -100,68 +97,6 @@ export default function ReturnForm({ entry, onSave, onClose }) {
   const addMed = (med) => {
     const prefix = treatment ? treatment + '\n' : ''
     setTreatment(`${prefix}-${med} `)
-  }
-
-  const [ocrProgress, setOcrProgress] = useState(0)
-  const [cropImageSrc, setCropImageSrc] = useState(null)
-
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setCropImageSrc(reader.result)
-    reader.readAsDataURL(file)
-    e.target.value = null
-  }
-
-  const handleOCR = async (croppedBlob) => {
-    setCropImageSrc(null)
-    setIsOcrLoading(true)
-    setOcrProgress(0)
-    try {
-      const Tesseract = (await import('tesseract.js')).default
-      const { data: { text } } = await Tesseract.recognize(
-        croppedBlob,
-        'tha+eng',
-        {
-          logger: m => {
-            if (m.status === 'recognizing text') {
-              setOcrProgress(Math.floor(m.progress * 100))
-            }
-          }
-        }
-      )
-
-      const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
-      let meds = []
-      let currentMed = ''
-
-      for (let line of lines) {
-        if (line.includes('โรงพยาบาล') || line.includes('พลฯ') || line.includes('จ.ส.อ.') || line.includes('จ.ส.ท.') || line.includes('จ.ส.ต.') || line.includes('ส.อ.') || line.includes('ส.ท.') || line.includes('ส.ต.')) continue
-
-        let matchTabs = line.match(/^(\d+)\s*(TAB|เม็ด)/i) || line.match(/(\d+)\s*(TAB|เม็ด)$/i)
-        if (matchTabs && currentMed) {
-          meds.push(`-${currentMed.trim()} ${matchTabs[1]} ${matchTabs[2]}`)
-          currentMed = ''
-          continue
-        }
-
-        if (/^[a-zA-Z]/.test(line) && !line.includes('HN:')) {
-          if (currentMed) currentMed += ' ' + line
-          else currentMed = line
-        }
-      }
-
-      const parsedText = meds.length > 0 ? meds.join('\n') : text
-      const prefix = treatment ? treatment + '\n' : ''
-      setTreatment(prefix + parsedText)
-
-    } catch (err) {
-      alert('สแกนไม่สำเร็จ: ' + err.message)
-    } finally {
-      setIsOcrLoading(false)
-      setOcrProgress(0)
-    }
   }
 
   return (
@@ -222,16 +157,6 @@ export default function ReturnForm({ entry, onSave, onClose }) {
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <label className="form-label">การรักษา (เพิ่มยาอัตโนมัติ)</label>
-                  <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer', color: 'var(--green-600)', padding: '0.2rem 0.5rem', background: '#dcfce7', borderRadius: 'var(--radius-full)' }}>
-                    {isOcrLoading ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                        <div className="spinner" style={{ width: '12px', height: '12px', borderTopColor: 'var(--green-600)' }} />
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{ocrProgress}%</span>
-                      </div>
-                    ) : <span>📷</span>}
-                    {!isOcrLoading && <span style={{ fontSize: '0.75rem', marginLeft: '0.3rem', fontWeight: 600 }}>สแกนซองยา</span>}
-                    <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFileSelect} disabled={isOcrLoading} />
-                  </label>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.6rem', marginTop: '0.5rem' }}>
                   {COMMON_MEDS.map(med => (
@@ -396,13 +321,6 @@ export default function ReturnForm({ entry, onSave, onClose }) {
           </div>
         </div>
       </div>
-      {cropImageSrc && (
-        <ImageCropperModal
-          imageSrc={cropImageSrc}
-          onCropComplete={handleOCR}
-          onCancel={() => setCropImageSrc(null)}
-        />
-      )}
     </div>
   )
 }

@@ -189,9 +189,11 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   const [apptType, setApptType] = useState(() => {
-    if (editData?.noAppointment) return 'none'
-    if (!editData?.appointmentDate && !date) return 'none'
-    const d = editData?.appointmentDate || date || ''
+    if (!editData) return 'none'
+    if (editData.noAppointment) return 'none'
+    if (editData.patient?.appointmentText || editData.appointmentText) return 'text'
+    if (!editData.appointmentDate) return 'none'
+    const d = editData.appointmentDate
     if (/^\d{4}-\d{2}-\d{2}/.test(d)) return 'date'
     return 'text'
   })
@@ -205,7 +207,9 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
     appointmentDate: editData?.appointmentDate || date || '',
     appointmentTime: editData?.appointmentTime || '',
     notes: editData?.notes || '',
-    noAppointment: editData?.noAppointment || false,
+    noAppointment: editData ? editData.noAppointment : true,
+    appointmentText: editData?.patient?.appointmentText || editData?.appointmentText || '',
+    isEveryday: editData?.patient?.isEveryday || false,
   })
 
   const filtered = search.trim()
@@ -233,12 +237,18 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
       ...editData,
       id: editData?.id,
       date,
-      patient: selected,
       ...form,
+      patient: {
+        ...selected,
+        appointmentText: apptType === 'text' ? form.appointmentText : '',
+        isEveryday: apptType === 'text' && form.isEveryday
+      },
       appointmentDate: apptType === 'none' ? '' : form.appointmentDate,
       appointmentTime: apptType === 'none' ? '' : form.appointmentTime,
       noAppointment: apptType === 'none'
     }
+    delete record.appointmentText
+    delete record.isEveryday
     onSave(record)
   }
 
@@ -493,23 +503,35 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
                   <div className="appt-row">
                     <div>
                       <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>
-                        {apptType === 'date' ? 'วันที่นัด' : 'ข้อความนัด (เช่น นัดทำแผลทุกวัน)'}
+                        {apptType === 'date' ? 'วันที่นัด' : 'วันที่นัด (จำเป็นต้องระบุเพื่อลงนัดล่วงหน้า)'}
                       </label>
-                      {apptType === 'date' ? (
-                        <input
-                          type="date"
-                          className="form-control"
-                          value={form.appointmentDate}
-                          onChange={e => handleChange('appointmentDate', e.target.value)}
-                        />
-                      ) : (
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="เช่น นัดล้างแผล"
-                          value={form.appointmentDate}
-                          onChange={e => handleChange('appointmentDate', e.target.value)}
-                        />
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={form.appointmentDate}
+                        onChange={e => handleChange('appointmentDate', e.target.value)}
+                      />
+                      {apptType === 'text' && (
+                        <div style={{ marginTop: '0.5rem' }}>
+                          <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>
+                            ข้อความนัด (เช่น ทำแผล)
+                          </label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="เช่น นัดล้างแผล"
+                            value={form.appointmentText}
+                            onChange={e => handleChange('appointmentText', e.target.value)}
+                          />
+                          <label className="checkbox-label" style={{ marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <input
+                              type="checkbox"
+                              checked={form.isEveryday}
+                              onChange={e => handleChange('isEveryday', e.target.checked)}
+                            />
+                            นัดต่อเนื่องทุกวัน
+                          </label>
+                        </div>
                       )}
                     </div>
                     <div>

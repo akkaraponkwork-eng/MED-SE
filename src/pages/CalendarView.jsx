@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Plus, PieChart, X } from 'lucide-react'
 import { useRecords } from '../hooks/useRecords'
 import PatientDetailsModal from '../components/PatientDetailsModal'
+import { SyncContext } from '../hooks/useSyncContext'
 
 const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 const THAI_MONTHS_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
@@ -21,7 +22,7 @@ function thaiDateLabel(dateStr) {
 
 export default function CalendarView() {
   const navigate = useNavigate()
-  const { records, getDatesWithRecords, loading } = useRecords()
+  const { records, getDatesWithRecords, loading, syncStatus } = useRecords()
   const today = new Date()
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate())
 
@@ -31,8 +32,9 @@ export default function CalendarView() {
 
   const datesWithData = new Set(getDatesWithRecords())
 
-  // ดึงรายการล่าสุด
+  // ดึงรายการล่าสุด (ไม่เกินวันนี้)
   const recentDates = [...datesWithData]
+    .filter(d => d <= todayStr)
     .sort((a, b) => b.localeCompare(a))
     .slice(0, 7)
 
@@ -53,6 +55,7 @@ export default function CalendarView() {
   const hospPercent = todayTotal === 0 ? 0 : Math.round((todayHosp / todayTotal) * 100)
 
   return (
+    <SyncContext.Provider value={syncStatus}>
     <>
       {/* Stats Row 1: แยกประเภทส่งป่วย */}
       <div className="stats-grid stats-3" style={{ marginBottom: '0.6rem' }}>
@@ -371,5 +374,6 @@ export default function CalendarView() {
         onClose={() => setViewDetailsEntry(null)}
       />
     </>
+    </SyncContext.Provider>
   )
 }

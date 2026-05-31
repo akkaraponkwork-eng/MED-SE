@@ -7,6 +7,7 @@ import DailyReport from '../components/DailyReport'
 import ReturnForm from '../components/ReturnForm'
 import ReturnReport from '../components/ReturnReport'
 import PatientDetailsModal from '../components/PatientDetailsModal'
+import { SyncContext } from '../hooks/useSyncContext'
 
 const THAI_MONTHS_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
 const THAI_MONTHS_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
@@ -47,7 +48,7 @@ function Toast({ msg, onDone }) {
 export default function EntryPage() {
   const { date } = useParams()
   const navigate = useNavigate()
-  const { getByDate, add, update, remove, loading } = useRecords()
+  const { getByDate, add, update, remove, loading, syncStatus } = useRecords()
 
   const [showForm, setShowForm] = useState(false)
   const [editEntry, setEditEntry] = useState(null)
@@ -118,7 +119,7 @@ export default function EntryPage() {
           e.patient.lastName === record.patient.lastName &&
           e.id !== record.id
         )
-        if (targetEntry) {
+        if (targetEntry && !targetEntry.returned) {
           remove(targetEntry.id)
           if (!record.returned || record.noAppointment) {
             message += ' (ลบนัดล่วงหน้าเดิมแล้ว)'
@@ -134,7 +135,9 @@ export default function EntryPage() {
         const existingEntries = getByDate(apptDate)
         const alreadyExists = existingEntries.some(e =>
           e.patient.firstName === record.patient.firstName &&
-          e.patient.lastName === record.patient.lastName
+          e.patient.lastName === record.patient.lastName &&
+          e.patient.platoon === record.patient.platoon &&
+          e.patient.number === record.patient.number
         )
 
         if (!alreadyExists) {
@@ -173,6 +176,7 @@ export default function EntryPage() {
   const notReturnedCount = entries.length - returnedCount
 
   return (
+    <SyncContext.Provider value={syncStatus}>
     <>
       {/* Header */}
       <div className="page-header">
@@ -287,8 +291,8 @@ export default function EntryPage() {
             <>
               <div className="patient-list">
                 {paginatedEntries.map((entry, idx) => {
-                  const p = entry.patient
-                  const fullName = `${p.rank} ${p.firstName} ${p.lastName}`
+                  const p = entry.patient || {}
+                  const fullName = [p.rank, p.firstName, p.lastName].filter(Boolean).join(' ') || 'ไม่ระบุชื่อ'
                   const dest = entry.destination || 'ตร.ศบบ.'
                   const isHosp = dest === 'รพ. อปร.ฯ'
                   const globalIdx = (currentPage - 1) * itemsPerPage + idx
@@ -489,5 +493,6 @@ export default function EntryPage() {
       {/* Toast */}
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
     </>
+    </SyncContext.Provider>
   )
 }
