@@ -5,6 +5,7 @@ import Layout from './components/Layout'
 import CalendarView from './pages/CalendarView'
 import EntryPage from './pages/EntryPage'
 import CalendarPage from './pages/CalendarPage'
+import { RecordsProvider } from './hooks/recordsContext'
 
 const AUTH_KEY = 'med_auth_user'
 
@@ -31,15 +32,17 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Layout user={user} onLogout={handleLogout}>
-        <Routes>
-          <Route path="/" element={<CalendarView />} />
-          <Route path="/today" element={<Navigate to={`/entry/${getTodayStr()}`} replace />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/entry/:date" element={<EntryPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Layout>
+      <RecordsProvider>
+        <Layout user={user} onLogout={handleLogout}>
+          <Routes>
+            <Route path="/" element={<CalendarView />} />
+            <Route path="/today" element={<Navigate to={`/entry/${getTodayStr()}`} replace />} />
+            <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/entry/:date" element={<EntryPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Layout>
+      </RecordsProvider>
     </BrowserRouter>
   )
 }

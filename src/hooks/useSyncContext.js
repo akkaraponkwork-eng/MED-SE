@@ -1,9 +1,8 @@
-import { createContext, useContext } from 'react'
-
-// Context สำหรับส่ง syncStatus จาก CalendarView/EntryPage ไปที่ Layout
-// ใช้ SyncProvider ครอบ component ที่ใช้ useRecords
-export const SyncContext = createContext('synced')
+import { useContext } from 'react'
+import { RecordsContext } from './recordsContext'
 
 export function useSyncStatus() {
-  return useContext(SyncContext)
+  const context = useContext(RecordsContext)
+  return context ? context.syncStatus : 'synced'
 }
+

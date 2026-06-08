@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Plus, PieChart, X } from 'lucide-react'
 import { useRecords } from '../hooks/useRecords'
 import PatientDetailsModal from '../components/PatientDetailsModal'
-import { SyncContext } from '../hooks/useSyncContext'
 
 const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 const THAI_MONTHS_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
@@ -54,8 +53,19 @@ export default function CalendarView() {
   const trrPercent = todayTotal === 0 ? 0 : Math.round((todayTrr / todayTotal) * 100)
   const hospPercent = todayTotal === 0 ? 0 : Math.round((todayHosp / todayTotal) * 100)
 
+  const todayMorning = todayRecords.filter(r => (r.patient?.session || 'เช้า') === 'เช้า').length
+  const todayAfternoon = todayRecords.filter(r => r.patient?.session === 'บ่าย').length
+
+  const PLATOONS = ['หมวด 1', 'หมวด 2', 'หมวด 3', 'หมวด 4', 'หมวด 5', 'อื่นๆ']
+  const platoonCounts = {}
+  PLATOONS.forEach(p => { platoonCounts[p] = 0 })
+  todayRecords.forEach(r => {
+    const p = r.patient?.platoon || 'อื่นๆ'
+    let matched = PLATOONS.find(item => item === p) || 'อื่นๆ'
+    platoonCounts[matched]++
+  })
+
   return (
-    <SyncContext.Provider value={syncStatus}>
     <>
       {/* Stats Row 1: แยกประเภทส่งป่วย */}
       <div className="stats-grid stats-3" style={{ marginBottom: '0.6rem' }}>
@@ -217,6 +227,64 @@ export default function CalendarView() {
         </div>
       </div>
 
+      {/* Detail Stats: Session & Platoon */}
+      {todayTotal > 0 && (
+        <div className="card" style={{ marginBottom: '1.25rem' }}>
+          <div className="card-header">
+            <span style={{ fontSize: '1.1rem' }}>📊</span>
+            <span className="card-title">สถิติส่งป่วยแยกตามช่วงเวลาและหมวด</span>
+          </div>
+          <div className="card-body">
+            {/* Session Stats (เช้า/บ่าย) */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h4 style={{ fontSize: '0.9rem', color: 'var(--gray-700)', marginBottom: '0.75rem', fontWeight: 700 }}>
+                ⏰ แยกตามช่วงเวลา
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.75rem', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--green-600)' }}>{todayMorning}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--green-700)', fontWeight: 600 }}>ช่วงเช้า (ก่อน 12:00 น.)</div>
+                </div>
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '0.75rem', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#dc2626' }}>{todayAfternoon}</div>
+                  <div style={{ fontSize: '0.78rem', color: '#b91c1c', fontWeight: 600 }}>ช่วงบ่าย (หลัง 12:00 น.)</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Platoon Stats (หมวด) */}
+            <div>
+              <h4 style={{ fontSize: '0.9rem', color: 'var(--gray-700)', marginBottom: '0.75rem', fontWeight: 700 }}>
+                🪖 แยกตามหมวด
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                {PLATOONS.map(plat => {
+                  const count = platoonCounts[plat] || 0
+                  const percent = todayTotal === 0 ? 0 : Math.round((count / todayTotal) * 100)
+                  return (
+                    <div key={plat} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--gray-600)', width: '60px', fontWeight: 600 }}>{plat}</span>
+                      <div style={{ flex: 1, height: '8px', background: 'var(--gray-100)', borderRadius: 'var(--radius-full)', overflow: 'hidden', position: 'relative' }}>
+                        <div style={{ 
+                          width: `${percent}%`, 
+                          height: '100%', 
+                          background: count > 0 ? 'linear-gradient(90deg, var(--green-400), var(--green-600))' : 'var(--gray-200)',
+                          borderRadius: 'var(--radius-full)',
+                          transition: 'width 0.5s ease-out'
+                        }} />
+                      </div>
+                      <span style={{ fontSize: '0.85rem', color: count > 0 ? 'var(--gray-800)' : 'var(--gray-400)', width: '45px', textAlign: 'right', fontWeight: 700 }}>
+                        {count} นาย
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Recent Records */}
       <div className="card">
         <div className="card-header">
@@ -374,6 +442,5 @@ export default function CalendarView() {
         onClose={() => setViewDetailsEntry(null)}
       />
     </>
-    </SyncContext.Provider>
   )
 }

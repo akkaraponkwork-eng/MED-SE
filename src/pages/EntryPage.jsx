@@ -7,7 +7,6 @@ import DailyReport from '../components/DailyReport'
 import ReturnForm from '../components/ReturnForm'
 import ReturnReport from '../components/ReturnReport'
 import PatientDetailsModal from '../components/PatientDetailsModal'
-import { SyncContext } from '../hooks/useSyncContext'
 
 const THAI_MONTHS_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
 const THAI_MONTHS_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
@@ -176,7 +175,6 @@ export default function EntryPage() {
   const notReturnedCount = entries.length - returnedCount
 
   return (
-    <SyncContext.Provider value={syncStatus}>
     <>
       {/* Header */}
       <div className="page-header">
@@ -493,6 +491,5 @@ export default function EntryPage() {
       {/* Toast */}
       {toast && <Toast msg={toast} onDone={() => setToast('')} />}
     </>
-    </SyncContext.Provider>
   )
 }

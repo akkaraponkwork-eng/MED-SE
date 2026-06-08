@@ -210,6 +210,7 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
     noAppointment: editData ? editData.noAppointment : true,
     appointmentText: editData?.patient?.appointmentText || editData?.appointmentText || '',
     isEveryday: editData?.patient?.isEveryday || false,
+    session: editData?.patient?.session || (new Date().getHours() < 12 ? 'เช้า' : 'บ่าย'),
   })
 
   const filtered = search.trim()
@@ -241,7 +242,8 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
       patient: {
         ...selected,
         appointmentText: apptType === 'text' ? form.appointmentText : '',
-        isEveryday: apptType === 'text' && form.isEveryday
+        isEveryday: apptType === 'text' && form.isEveryday,
+        session: form.session
       },
       appointmentDate: apptType === 'none' ? '' : form.appointmentDate,
       appointmentTime: apptType === 'none' ? '' : form.appointmentTime,
@@ -249,6 +251,7 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
     }
     delete record.appointmentText
     delete record.isEveryday
+    delete record.session
     onSave(record)
   }
 
@@ -446,6 +449,41 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
                       }}
                     >
                       {dest === 'ตร.ศบบ.' ? 'ตร.ศบบ.' : 'รพ. อปร.ฯ'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Session Selector */}
+              <div className="form-group">
+                <label className="form-label">ช่วงเวลาส่งป่วย</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {['เช้า', 'บ่าย'].map(sess => (
+                    <button
+                      key={sess}
+                      type="button"
+                      id={`session-${sess === 'เช้า' ? 'morning' : 'afternoon'}`}
+                      onClick={() => handleChange('session', sess)}
+                      style={{
+                        flex: 1,
+                        padding: '0.65rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: form.session === sess
+                          ? '2px solid var(--green-500)'
+                          : '1.5px solid var(--gray-200)',
+                        background: form.session === sess
+                          ? 'linear-gradient(135deg, var(--green-500), var(--green-600))'
+                          : 'white',
+                        color: form.session === sess ? 'white' : 'var(--gray-600)',
+                        fontFamily: 'var(--font-th)',
+                        fontSize: '0.9rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: form.session === sess ? '0 4px 12px rgba(22,163,74,0.3)' : 'none',
+                      }}
+                    >
+                      ช่วง{sess} {sess === 'เช้า' ? '(ก่อน 12:00 น.)' : '(หลัง 12:00 น.)'}
                     </button>
                   ))}
                 </div>

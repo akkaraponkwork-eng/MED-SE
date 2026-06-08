@@ -1,7 +1,7 @@
-// ===== useRecords Hook =====
-// จัดการสถานะและ CRUD สำหรับบันทึกส่งป่วยพร้อม cache ใน localStorage
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useContext } from 'react'
 import * as api from '../services/api'
+import { RecordsContext } from './recordsContext'
+
 
 const CACHE_KEY = 'med_records_cache'
 const PATIENTS_KEY = 'med_patients_cache'
@@ -96,89 +96,12 @@ export function usePatients() {
   return { patients, loading, error, refetch: fetchPatients }
 }
 
+
 // syncStatus: 'synced' | 'syncing' | 'offline'
 export function useRecords() {
-  const [records, setRecords] = useState(() => {
-    const cached = loadCache(CACHE_KEY) || []
-    return cached.map(normalizeRecord)
-  })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [syncStatus, setSyncStatus] = useState('synced')
-
-  const fetchAll = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    setSyncStatus('syncing')
-    try {
-      const data = await api.getAllRecords()
-      const normalized = data.map(normalizeRecord)
-      setRecords(normalized)
-      saveCache(CACHE_KEY, normalized)
-      setSyncStatus('synced')
-    } catch (err) {
-      setError(err.message)
-      setSyncStatus('offline')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { fetchAll() }, [fetchAll])
-
-  const getByDate = useCallback((date) => {
-    return records.filter(r => r.date === date)
-  }, [records])
-
-  const getDatesWithRecords = useCallback(() => {
-    const dates = new Set(records.map(r => r.date))
-    return [...dates]
-  }, [records])
-
-  const add = useCallback(async (record) => {
-    const newRecord = normalizeRecord({ ...record, id: Date.now().toString() + Math.random().toString().slice(2, 6) })
-    setRecords(prev => {
-      const updated = [...prev, newRecord]
-      saveCache(CACHE_KEY, updated)
-      return updated
-    })
-    try {
-      await api.addRecord(newRecord)
-      setSyncStatus('synced')
-    } catch {
-      setSyncStatus('offline')
-    }
-    return newRecord
-  }, [])
-
-  const update = useCallback(async (record) => {
-    const normalized = normalizeRecord(record)
-    setRecords(prev => {
-      const updated = prev.map(r => r.id === normalized.id ? normalized : r)
-      saveCache(CACHE_KEY, updated)
-      return updated
-    })
-    try {
-      await api.updateRecord(normalized)
-      setSyncStatus('synced')
-    } catch {
-      setSyncStatus('offline')
-    }
-  }, [])
-
-  const remove = useCallback(async (id) => {
-    setRecords(prev => {
-      const updated = prev.filter(r => r.id !== id)
-      saveCache(CACHE_KEY, updated)
-      return updated
-    })
-    try {
-      await api.deleteRecord(id)
-      setSyncStatus('synced')
-    } catch {
-      setSyncStatus('offline')
-    }
-  }, [])
-
-  return { records, loading, error, syncStatus, getByDate, getDatesWithRecords, add, update, remove, refetch: fetchAll }
+  const context = useContext(RecordsContext)
+  if (!context) {
+    throw new Error('useRecords must be used within a RecordsProvider')
+  }
+  return context
 }
