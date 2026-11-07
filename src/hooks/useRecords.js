@@ -2,6 +2,7 @@
 // จัดการสถานะและ CRUD สำหรับบันทึกส่งป่วยพร้อม cache ใน localStorage
 import { useState, useEffect, useCallback } from 'react'
 import * as api from '../services/api'
+import { DEFAULT_PATIENTS } from '@/data/defaultPatients'
 
 const CACHE_KEY = 'med_records_cache'
 const PATIENTS_KEY = 'med_patients_cache'
@@ -40,6 +41,7 @@ function normalizeDate(val) {
 
 // Normalize record ให้ทุก field อยู่ใน format ที่ถูกต้อง
 function normalizeRecord(r) {
+  if (!r) return null
   let patientObj = r.patient || {}
   // ป้องกันกรณี patient ถูกบันทึกเป็น string จาก cache หรือ API
   if (typeof patientObj === 'string') {
@@ -61,6 +63,7 @@ function normalizeRecord(r) {
 }
 
 function loadCache(key) {
+  if (typeof window === 'undefined') return null
   try {
     const raw = localStorage.getItem(key)
     return raw ? JSON.parse(raw) : null
@@ -68,24 +71,71 @@ function loadCache(key) {
 }
 
 function saveCache(key, data) {
+  if (typeof window === 'undefined') return
   try { localStorage.setItem(key, JSON.stringify(data)) } catch {}
 }
 
+const PATIENTS_SOURCE_KEY = 'web_med_patients_source_v2'
+
 export function usePatients() {
-  const [patients, setPatients] = useState(() => loadCache(PATIENTS_KEY) || [])
+  const [patients, setPatients] = useState(() => loadCache(PATIENTS_KEY) || DEFAULT_PATIENTS)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const fetchPatients = useCallback(async () => {
+  // รับการแจ้งเตือนเมื่อมีการบันทึกรายชื่อใหม่จากหน้าอื่น
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleUpdate = (e) => {
+      const updated = e.detail || loadCache(PATIENTS_KEY)
+      if (Array.isArray(updated) && updated.length > 0) {
+        setPatients(updated)
+      }
+    }
+
+    window.addEventListener('patients_updated', handleUpdate)
+    window.addEventListener('storage', handleUpdate)
+    return () => {
+      window.removeEventListener('patients_updated', handleUpdate)
+      window.removeEventListener('storage', handleUpdate)
+    }
+  }, [])
+
+  const fetchPatients = useCallback(async (force = false) => {
     setLoading(true)
     setError(null)
     try {
       const data = await api.getPatientList()
-      setPatients(data)
-      saveCache(PATIENTS_KEY, data)
+      if (Array.isArray(data) && data.length > 0) {
+        const localSource = loadCache(PATIENTS_SOURCE_KEY)
+        const localCache = loadCache(PATIENTS_KEY)
+
+        // หากผู้ใช้เพิ่งนำเข้ารายชื่อใหม่ในเครื่อง (imported) และไม่ได้กด force sync
+        // ให้ตรวจสอบว่า Google Sheet เป็นข้อมูลใหม่หรือไม่ ถ้ายังเป็นผลัดเก่า ไม่ให้ทับข้อมูลที่นำเข้า
+        if (!force && localSource === 'imported' && Array.isArray(localCache) && localCache.length > 0) {
+          // ถ้าข้อมูลจาก Google Sheet ไม่มี code แต่ข้อมูลในเครื่องมี code แสดงว่า Sheet ยังไม่ได้อัปเดต
+          const localHasCode = localCache.some(p => p.code)
+          const remoteHasCode = data.some(p => p.code)
+          if (localHasCode && !remoteHasCode) {
+            console.warn('Google Sheet ยังเป็นข้อมูลผลัดเดิม จึงเก็บข้อมูลที่นำเข้าล่าสุดไว้')
+            return
+          }
+        }
+
+        setPatients(data)
+        saveCache(PATIENTS_KEY, data)
+        saveCache(PATIENTS_SOURCE_KEY, 'sheet')
+      } else if (!loadCache(PATIENTS_KEY)) {
+        // ถ้า Sheet ว่างและยังไม่มีใน cache ให้ใช้ default
+        saveCache(PATIENTS_KEY, DEFAULT_PATIENTS)
+        saveCache(PATIENTS_SOURCE_KEY, 'default')
+      }
     } catch (err) {
       setError(err.message)
-      // ถ้า fetch ไม่สำเร็จ ใช้ cache ที่มีอยู่
+      if (!loadCache(PATIENTS_KEY)) {
+        saveCache(PATIENTS_KEY, DEFAULT_PATIENTS)
+        saveCache(PATIENTS_SOURCE_KEY, 'default')
+      }
     } finally {
       setLoading(false)
     }
@@ -93,14 +143,62 @@ export function usePatients() {
 
   useEffect(() => { fetchPatients() }, [fetchPatients])
 
-  return { patients, loading, error, refetch: fetchPatients }
+  const savePatientsList = useCallback(async (newPatients, syncToSheet = true) => {
+    const formatted = newPatients.map((p, idx) => ({
+      id: p.id || `p${idx + 1}`,
+      code: (p.code || '').trim(),
+      rank: (p.rank || 'พลฯ').trim(),
+      firstName: (p.firstName || '').trim(),
+      lastName: (p.lastName || '').trim(),
+      platoon: (p.platoon || 'หมวด 1').trim(),
+      number: String(p.number || '').trim(),
+      unit: (p.unit || '').trim(),
+      citizenId: String(p.citizenId || '').trim(),
+      disease: (p.disease || '').trim(),
+      province: (p.province || '').trim(),
+    }))
+
+    setPatients(formatted)
+    saveCache(PATIENTS_KEY, formatted)
+    saveCache(PATIENTS_SOURCE_KEY, 'imported')
+
+    // แจ้งเตือนทุก Component ให้ใช้รายชื่อใหม่ทันที
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('patients_updated', { detail: formatted }))
+    }
+
+    let syncError = null
+    if (syncToSheet) {
+      try {
+        await api.replacePatients(formatted)
+      } catch (err) {
+        syncError = err.message
+      }
+    }
+
+    return { success: true, count: formatted.length, syncError }
+  }, [])
+
+  const resetPatientsToDefault = useCallback(async () => {
+    saveCache(PATIENTS_SOURCE_KEY, 'default')
+    return await savePatientsList(DEFAULT_PATIENTS, true)
+  }, [savePatientsList])
+
+  return { 
+    patients, 
+    loading, 
+    error, 
+    refetch: fetchPatients, 
+    savePatientsList, 
+    resetPatientsToDefault 
+  }
 }
 
 // syncStatus: 'synced' | 'syncing' | 'offline'
 export function useRecords() {
   const [records, setRecords] = useState(() => {
     const cached = loadCache(CACHE_KEY) || []
-    return cached.map(normalizeRecord)
+    return cached.map(normalizeRecord).filter(Boolean)
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -112,7 +210,7 @@ export function useRecords() {
     setSyncStatus('syncing')
     try {
       const data = await api.getAllRecords()
-      const normalized = data.map(normalizeRecord)
+      const normalized = data.map(normalizeRecord).filter(Boolean)
       setRecords(normalized)
       saveCache(CACHE_KEY, normalized)
       setSyncStatus('synced')

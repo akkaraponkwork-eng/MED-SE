@@ -1,5 +1,7 @@
+'use client'
+
 import { useState } from 'react'
-import { Eye, EyeOff, Shield, Lock, User } from 'lucide-react'
+import { Eye, EyeOff, Shield, Lock, User, Building2 } from 'lucide-react'
 
 const VALID_USER = 'an18'
 const VALID_PASS = '1234'
@@ -15,7 +17,6 @@ export default function Login({ onLogin }) {
     e.preventDefault()
     setError('')
     setLoading(true)
-    // simulate brief loading
     await new Promise(r => setTimeout(r, 500))
     if (username === VALID_USER && password === VALID_PASS) {
       onLogin(username)
@@ -29,7 +30,9 @@ export default function Login({ onLogin }) {
     <div className="login-page">
       <div className="login-card">
         <div className="login-logo">
-          <div className="login-logo-icon">🏥</div>
+          <div className="login-logo-icon">
+            <Building2 size={36} color="white" />
+          </div>
           <h1>ระบบบันทึกส่งป่วย</h1>
           <p>พัน.บร.กบร.ศบบ</p>
         </div>
@@ -110,3 +113,4 @@ export default function Login({ onLogin }) {
     </div>
   )
 }
+

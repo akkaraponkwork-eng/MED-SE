@@ -1,6 +1,6 @@
 // ===== Google Apps Script API Service =====
 // แก้ไข SCRIPT_URL ด้วย URL จาก Google Apps Script ที่ deploy แล้ว
-const SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || ''
+const SCRIPT_URL = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || ''
 
 const TIMEOUT_MS = 15000  // 15 วินาที
 const MAX_RETRIES = 2     // retry สูงสุด 2 รอบ
@@ -83,4 +83,16 @@ export async function deleteRecord(id) {
 export async function getDatesWithRecords() {
   const result = await apiFetch('getDates')
   return result.data || []
+}
+
+// นำเข้ารายชื่อผู้ป่วยใหม่ทั้งหมด (เปลี่ยนผลัด)
+export async function replacePatients(patients) {
+  const result = await apiFetch('replacePatients', { patients })
+  if (result && result.error) {
+    if (result.error.includes('Unknown action')) {
+      throw new Error('Google Apps Script บน Google Sheet ยังเป็นเวอร์ชันเดิม (ยังไม่มีคำสั่ง replacePatients) กรุณานำโค้ด google_apps_script.js ไปวางใน Apps Script แล้วกด Deploy ใหม่')
+    }
+    throw new Error(result.error)
+  }
+  return result
 }

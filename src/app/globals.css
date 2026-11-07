@@ -175,11 +175,12 @@ h1, h2, h3, h4, h5, h6 {
   border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-md);
   font-family: var(--font-th);
-  font-size: 0.95rem;
+  font-size: 16px; /* 16px ป้องกัน iOS Safari Auto-Zoom ตอนเปิดคีย์บอร์ด */
   color: var(--gray-800);
   background: var(--white);
   transition: all var(--transition);
   outline: none;
+  min-height: 44px; /* รองรับนิ้วสัมผัสตามมาตรฐาน Mobile */
 }
 
 .form-control:focus {
@@ -645,14 +646,16 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   width: 100%;
   max-width: 620px;
-  max-height: 92vh;
-  overflow-y: auto;
-  animation: slideModal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  max-height: 90dvh; /* baseline-ui: dvh ปรับตามคีย์บอร์ดมือถือ */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideModal 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .modal-overlay.center .modal {
   border-radius: var(--radius-xl);
-  animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes scaleIn {
@@ -671,42 +674,94 @@ textarea.form-control { resize: vertical; min-height: 80px; }
   gap: 0.75rem;
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--gray-100);
-  position: sticky;
-  top: 0;
   background: white;
-  z-index: 1;
+  z-index: 2;
+  flex-shrink: 0;
 }
 
 .modal-handle {
   width: 40px; height: 4px;
-  background: var(--gray-200);
+  background: var(--gray-300);
   border-radius: 99px;
   margin: 0 auto;
   position: absolute;
-  top: 0.5rem;
+  top: 0.45rem;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .modal-title { font-size: 1rem; font-weight: 700; flex: 1; padding-top: 0.25rem; }
-.modal-body { padding: 1.25rem; }
+.modal-body { 
+  padding: 1.25rem; 
+  flex: 1; 
+  overflow-y: auto; 
+  -webkit-overflow-scrolling: touch; 
+}
+
+.modal-footer {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding: 0.75rem 1.25rem;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--gray-100);
+  display: flex;
+  gap: 0.75rem;
+  z-index: 10;
+  flex-shrink: 0;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.03);
+}
+
+/* Quick Chips สำหรับเลือกเร็วบนโทรศัพท์ */
+.quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1.5px solid var(--gray-200);
+  background: white;
+  color: var(--gray-700);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 38px;
+}
+
+.quick-chip:active {
+  transform: scale(0.96);
+}
+
+.quick-chip.active {
+  background: var(--green-50);
+  border-color: var(--green-500);
+  color: var(--green-800);
+}
 
 /* ===== Search ===== */
 .search-results {
   background: white;
   border: 1.5px solid var(--green-200);
   border-radius: var(--radius-md);
-  max-height: 200px;
+  max-height: 280px;
   overflow-y: auto;
   box-shadow: var(--shadow-md);
   margin-top: 0.35rem;
+  -webkit-overflow-scrolling: touch;
 }
 
 .search-result-item {
-  padding: 0.65rem 1rem;
+  padding: 0.75rem 1rem;
   cursor: pointer;
   transition: background var(--transition);
-  border-bottom: 1px solid var(--gray-50);
+  border-bottom: 1px solid var(--gray-100);
+  min-height: 50px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .search-result-item:last-child { border-bottom: none; }

@@ -1,7 +1,9 @@
+'use client'
+
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react'
-import { useRecords } from '../hooks/useRecords'
+import { useRouter } from 'next/navigation'
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, FileSpreadsheet } from 'lucide-react'
+import { useRecords } from '@/hooks/useRecords'
 
 const THAI_MONTHS_FULL = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
 const DAYS_TH = ['อา','จ','อ','พ','พฤ','ศ','ส']
@@ -11,7 +13,7 @@ function toDateStr(y, m, d) {
 }
 
 export default function CalendarPage() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const { records } = useRecords()
   const today = new Date()
 
@@ -45,14 +47,25 @@ export default function CalendarPage() {
 
   const handleDayClick = (cell) => {
     if (cell.type !== 'current') return
-    navigate(`/entry/${toDateStr(viewYear, viewMonth, cell.day)}`)
+    router.push(`/entry/${toDateStr(viewYear, viewMonth, cell.day)}`)
   }
 
   return (
     <div className="card fade-in">
-      <div className="card-header">
-        <CalendarIcon size={18} style={{ color: 'var(--green-600)' }} />
-        <span className="card-title">ปฏิทินส่งป่วย</span>
+      <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <CalendarIcon size={18} style={{ color: 'var(--green-600)' }} />
+          <span className="card-title">ปฏิทินส่งป่วย</span>
+        </div>
+        <button
+          className="btn btn-ghost btn-sm"
+          onClick={() => window.dispatchEvent(new CustomEvent('open_export_modal'))}
+          title="ส่งออกรายงานข้อมูลการส่งป่วยเป็นไฟล์ Excel"
+          style={{ color: 'var(--green-700)', fontSize: '0.8rem' }}
+        >
+          <FileSpreadsheet size={15} />
+          <span>ส่งออก Excel</span>
+        </button>
       </div>
       <div className="card-body">
         <div className="calendar-nav">
@@ -135,3 +148,4 @@ export default function CalendarPage() {
     </div>
   )
 }
+

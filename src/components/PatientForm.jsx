@@ -1,183 +1,30 @@
-import { useState, useCallback } from 'react'
-import { Search, X, ChevronDown, ChevronUp } from 'lucide-react'
-import { usePatients } from '../hooks/useRecords'
+'use client'
 
-const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+import { useState, useMemo, useEffect } from 'react'
+import Link from 'next/link'
+import { Search, X, Building2, User, Users, Check, Clock } from 'lucide-react'
+import { usePatients } from '@/hooks/useRecords'
+import { DEFAULT_PATIENTS } from '@/data/defaultPatients'
 
-const PLATOONS = ['หมวด 1', 'หมวด 2', 'หมวด 3', 'หมวด 4', 'หมวด 5', 'อื่นๆ']
+const PLATOONS = ['ทั้งหมด', 'หมวด 1', 'หมวด 2', 'หมวด 3', 'หมวด 4', 'หมวด 5']
+const STATIC_PATIENTS = DEFAULT_PATIENTS
 
-// ข้อมูลรายชื่อทหารใหม่ 1/69 จาก Google Sheet (156 คน)
-const STATIC_PATIENTS = [
-  // หมวด 1
-  { id: 'p1', rank: 'พลฯ', firstName: 'พิทยา', lastName: 'พงษ์คุณ', platoon: 'หมวด 1', number: '1' },
-  { id: 'p2', rank: 'พลฯ', firstName: 'อนุชา', lastName: 'แสงประเสริฐ', platoon: 'หมวด 1', number: '2' },
-  { id: 'p3', rank: 'พลฯ', firstName: 'อรรถพล', lastName: 'ศรีเดช', platoon: 'หมวด 1', number: '3' },
-  { id: 'p4', rank: 'พลฯ', firstName: 'นิธิศ', lastName: 'ไชยทาน', platoon: 'หมวด 1', number: '4' },
-  { id: 'p5', rank: 'พลฯ', firstName: 'สรวุฒิ', lastName: 'พงศ์ไพรประเสริฐ', platoon: 'หมวด 1', number: '5' },
-  { id: 'p6', rank: 'พลฯ', firstName: 'ณัฐพงษ์', lastName: 'มณีวรรณ', platoon: 'หมวด 1', number: '6' },
-  { id: 'p7', rank: 'พลฯ', firstName: 'อัครพล', lastName: 'ไกรกลิ่น', platoon: 'หมวด 1', number: '7' },
-  { id: 'p8', rank: 'พลฯ', firstName: 'พรเทพ', lastName: 'แก้วทุ่ง', platoon: 'หมวด 1', number: '8' },
-  { id: 'p9', rank: 'พลฯ', firstName: 'วสุธา', lastName: 'ท้าวลา', platoon: 'หมวด 1', number: '9' },
-  { id: 'p10', rank: 'พลฯ', firstName: 'กฤษดา', lastName: 'จันทร์ละมูล', platoon: 'หมวด 1', number: '10' },
-  { id: 'p11', rank: 'พลฯ', firstName: 'ธนวิชญ์', lastName: 'สินลี้', platoon: 'หมวด 1', number: '11' },
-  { id: 'p12', rank: 'พลฯ', firstName: 'ไตรภพ', lastName: 'ทองใหล', platoon: 'หมวด 1', number: '12' },
-  { id: 'p13', rank: 'พลฯ', firstName: 'ปฏิพัทธ์', lastName: 'คงเมือง', platoon: 'หมวด 1', number: '13' },
-  { id: 'p14', rank: 'พลฯ', firstName: 'สุพรรณ', lastName: 'รินคำ', platoon: 'หมวด 1', number: '14' },
-  { id: 'p15', rank: 'พลฯ', firstName: 'ชิติพัทธ์', lastName: 'สามลปาม', platoon: 'หมวด 1', number: '15' },
-  { id: 'p16', rank: 'พลฯ', firstName: 'กิตติพล', lastName: 'โพธ์พันธ์', platoon: 'หมวด 1', number: '16' },
-  { id: 'p17', rank: 'พลฯ', firstName: 'ณัฐกิตติ์', lastName: 'รอดเกิด', platoon: 'หมวด 1', number: '17' },
-  { id: 'p18', rank: 'พลฯ', firstName: 'กิตติวัฒน์', lastName: 'คำมาเกี๋ยง', platoon: 'หมวด 1', number: '18' },
-  { id: 'p19', rank: 'พลฯ', firstName: 'พิชชปกรณ์', lastName: 'โปธา', platoon: 'หมวด 1', number: '19' },
-  { id: 'p20', rank: 'พลฯ', firstName: 'นราวิชญ์', lastName: 'เสาร์จักร์', platoon: 'หมวด 1', number: '20' },
-  { id: 'p21', rank: 'พลฯ', firstName: 'ธนวัฒน์', lastName: 'ยาณะวงค์ษา', platoon: 'หมวด 1', number: '21' },
-  { id: 'p22', rank: 'พลฯ', firstName: 'มนต์ธัช', lastName: 'มูลนิลตา', platoon: 'หมวด 1', number: '22' },
-  { id: 'p23', rank: 'พลฯ', firstName: 'ธนพัฒน์', lastName: 'ยุติธรรม', platoon: 'หมวด 1', number: '23' },
-  { id: 'p24', rank: 'พลฯ', firstName: 'สุรชัย', lastName: 'พลขัน', platoon: 'หมวด 1', number: '24' },
-  { id: 'p25', rank: 'พลฯ', firstName: 'อภิวรรธน์', lastName: 'เศษฐา', platoon: 'หมวด 1', number: '25' },
-  { id: 'p26', rank: 'พลฯ', firstName: 'ธวัชชัย', lastName: 'กล่ำนาค', platoon: 'หมวด 1', number: '26' },
-  { id: 'p27', rank: 'พลฯ', firstName: 'วชิรวิทย์', lastName: 'มณีศรี', platoon: 'หมวด 1', number: '27' },
-  { id: 'p28', rank: 'พลฯ', firstName: 'เอกวิทย์', lastName: 'ต้นหนองดู่', platoon: 'หมวด 1', number: '28' },
-  { id: 'p29', rank: 'พลฯ', firstName: 'ปวริศร์', lastName: 'สาทแก้ว', platoon: 'หมวด 1', number: '29' },
-  { id: 'p30', rank: 'พลฯ', firstName: 'ภัทรพงศ์', lastName: 'ยะมงคล', platoon: 'หมวด 1', number: '30' },
-  { id: 'p31', rank: 'พลฯ', firstName: 'พีระนันท์', lastName: 'ยุระศรี', platoon: 'หมวด 1', number: '31' },
-  { id: 'p32', rank: 'พลฯ', firstName: 'นนทกานต์', lastName: 'วณีสอน', platoon: 'หมวด 1', number: '32' },
-  { id: 'p33', rank: 'พลฯ', firstName: 'ภูสรรค์', lastName: 'ชีวทรัพย์คีรี', platoon: 'หมวด 1', number: '33' },
-  { id: 'p34', rank: 'พลฯ', firstName: 'ศักดา', lastName: 'ประสาทแก้ว', platoon: 'หมวด 1', number: '34' },
-  { id: 'p35', rank: 'พลฯ', firstName: 'คณาธิป', lastName: 'จางใส', platoon: 'หมวด 1', number: '35' },
-  { id: 'p36', rank: 'พลฯ', firstName: 'สิรวิชญ์', lastName: 'พรมฮวด', platoon: 'หมวด 1', number: '36' },
-  { id: 'p37', rank: 'พลฯ', firstName: 'คมกฤต', lastName: 'ปุ้ยทอง', platoon: 'หมวด 1', number: '37' },
-  { id: 'p38', rank: 'พลฯ', firstName: 'พีรพัฒน์', lastName: 'พานทอง', platoon: 'หมวด 1', number: '38' },
-  { id: 'p39', rank: 'พลฯ', firstName: 'พัทธพล', lastName: 'บวรกิจทวีสกุล', platoon: 'หมวด 1', number: '39' },
-  // หมวด 2
-  { id: 'p40', rank: 'พลฯ', firstName: 'ภานุกร', lastName: 'โพธิ์เพ็ง', platoon: 'หมวด 2', number: '40' },
-  { id: 'p41', rank: 'พลฯ', firstName: 'สรวิชณ์', lastName: 'หุนกระโทก', platoon: 'หมวด 2', number: '41' },
-  { id: 'p42', rank: 'พลฯ', firstName: 'ปุณณภพ', lastName: 'ปุ่มนอก', platoon: 'หมวด 2', number: '42' },
-  { id: 'p43', rank: 'พลฯ', firstName: 'ณัฐภูมิ', lastName: 'จันสี', platoon: 'หมวด 2', number: '43' },
-  { id: 'p44', rank: 'พลฯ', firstName: 'กิตติพงษ์', lastName: 'แย้มชุมพร', platoon: 'หมวด 2', number: '44' },
-  { id: 'p45', rank: 'พลฯ', firstName: 'ปิติกร', lastName: 'หงทัพ', platoon: 'หมวด 2', number: '45' },
-  { id: 'p46', rank: 'พลฯ', firstName: 'มานะชัย', lastName: 'เขียวเกษม', platoon: 'หมวด 2', number: '46' },
-  { id: 'p47', rank: 'พลฯ', firstName: 'ชนะชัย', lastName: 'เขียวเกษม', platoon: 'หมวด 2', number: '47' },
-  { id: 'p48', rank: 'พลฯ', firstName: 'ศราวุฒิ', lastName: 'มุ่งปั่นกลาง', platoon: 'หมวด 2', number: '48' },
-  { id: 'p49', rank: 'พลฯ', firstName: 'ประดิษฐาปกรณ์', lastName: 'พัทยา', platoon: 'หมวด 2', number: '49' },
-  { id: 'p50', rank: 'พลฯ', firstName: 'ธนพนธ์', lastName: 'ศรีเชียงซุย', platoon: 'หมวด 2', number: '50' },
-  { id: 'p51', rank: 'พลฯ', firstName: 'พีรยุทธ', lastName: 'เพชรทอง', platoon: 'หมวด 2', number: '51' },
-  { id: 'p52', rank: 'พลฯ', firstName: 'ธีระฉัตร์', lastName: 'เศรษฐีพ่อค้า', platoon: 'หมวด 2', number: '52' },
-  { id: 'p53', rank: 'พลฯ', firstName: 'เสกศิริ', lastName: 'จันทาสร', platoon: 'หมวด 2', number: '53' },
-  { id: 'p54', rank: 'พลฯ', firstName: 'พรบดินทร์', lastName: 'พลแสน', platoon: 'หมวด 2', number: '54' },
-  { id: 'p55', rank: 'พลฯ', firstName: 'ปิยวัฒน์', lastName: 'อยู่ช้าง', platoon: 'หมวด 2', number: '55' },
-  { id: 'p56', rank: 'พลฯ', firstName: 'อดิเทพ', lastName: 'อินทร์แป้น', platoon: 'หมวด 2', number: '56' },
-  { id: 'p57', rank: 'พลฯ', firstName: 'ชนกันต์', lastName: 'พับทอง', platoon: 'หมวด 2', number: '57' },
-  { id: 'p58', rank: 'พลฯ', firstName: 'บุญนาค', lastName: 'เหล็กสัก', platoon: 'หมวด 2', number: '58' },
-  { id: 'p59', rank: 'พลฯ', firstName: 'นิธิสิทธิ์', lastName: 'จันทร์ขำ', platoon: 'หมวด 2', number: '59' },
-  { id: 'p60', rank: 'พลฯ', firstName: 'อิทธิพล', lastName: 'ภูมิอภิธรรม', platoon: 'หมวด 2', number: '60' },
-  { id: 'p61', rank: 'พลฯ', firstName: 'ธรรมรัตน์', lastName: 'รัญเสวะ', platoon: 'หมวด 2', number: '61' },
-  { id: 'p62', rank: 'พลฯ', firstName: 'ธนกร', lastName: 'มั่นประสงค์', platoon: 'หมวด 2', number: '62' },
-  { id: 'p63', rank: 'พลฯ', firstName: 'ธีรเดช', lastName: 'พรรคเจริญ', platoon: 'หมวด 2', number: '63' },
-  { id: 'p64', rank: 'พลฯ', firstName: 'พีรพัฒน์', lastName: 'สลุงอยู่', platoon: 'หมวด 2', number: '64' },
-  { id: 'p65', rank: 'พลฯ', firstName: 'ศุภณัฐ', lastName: 'สังข์ทอง', platoon: 'หมวด 2', number: '65' },
-  { id: 'p66', rank: 'พลฯ', firstName: 'กชกร', lastName: 'แซ่เฮา', platoon: 'หมวด 2', number: '66' },
-  { id: 'p67', rank: 'พลฯ', firstName: 'พงศกร', lastName: 'จันทร', platoon: 'หมวด 2', number: '67' },
-  { id: 'p68', rank: 'พลฯ', firstName: 'พุฒิพันธ์', lastName: 'พุ่มเทศ', platoon: 'หมวด 2', number: '68' },
-  { id: 'p69', rank: 'พลฯ', firstName: 'อดิศักดิ์', lastName: 'ยอกร', platoon: 'หมวด 2', number: '69' },
-  { id: 'p70', rank: 'พลฯ', firstName: 'ชีวธันย์', lastName: 'กิ่งเนตร', platoon: 'หมวด 2', number: '70' },
-  { id: 'p71', rank: 'พลฯ', firstName: 'อธิชา', lastName: 'คงเงิน', platoon: 'หมวด 2', number: '71' },
-  { id: 'p72', rank: 'พลฯ', firstName: 'เทวัญ', lastName: 'ดีประสิทธิ์', platoon: 'หมวด 2', number: '72' },
-  { id: 'p73', rank: 'พลฯ', firstName: 'มานิตย์', lastName: 'แกละวัน', platoon: 'หมวด 2', number: '73' },
-  { id: 'p74', rank: 'พลฯ', firstName: 'ฉันทัช', lastName: 'ศรีมะเรือง', platoon: 'หมวด 2', number: '74' },
-  { id: 'p75', rank: 'พลฯ', firstName: 'รชต', lastName: 'จันทร์ลาย', platoon: 'หมวด 2', number: '75' },
-  { id: 'p76', rank: 'พลฯ', firstName: 'ศุภณัฐ', lastName: 'พุกำพันธ์', platoon: 'หมวด 2', number: '76' },
-  { id: 'p77', rank: 'พลฯ', firstName: 'ณัฐนันท์', lastName: 'ยิ้มช้าง', platoon: 'หมวด 2', number: '77' },
-  { id: 'p78', rank: 'พลฯ', firstName: 'ทนงศักดิ์', lastName: 'สีชอล์ด', platoon: 'หมวด 2', number: '78' },
-  // หมวด 3
-  { id: 'p79', rank: 'พลฯ', firstName: 'จรูญโรจน์', lastName: 'ภูรัตนพลที', platoon: 'หมวด 3', number: '79' },
-  { id: 'p80', rank: 'พลฯ', firstName: 'ธนากร', lastName: 'ณ บางช้าง', platoon: 'หมวด 3', number: '80' },
-  { id: 'p81', rank: 'พลฯ', firstName: 'คณิศร', lastName: 'คำจัด', platoon: 'หมวด 3', number: '81' },
-  { id: 'p82', rank: 'พลฯ', firstName: 'ภูมิรพี', lastName: 'จินนะ', platoon: 'หมวด 3', number: '82' },
-  { id: 'p83', rank: 'พลฯ', firstName: 'พงศกร', lastName: 'ชุ่มวะมล', platoon: 'หมวด 3', number: '83' },
-  { id: 'p84', rank: 'พลฯ', firstName: 'วีรภาพ', lastName: 'แขกใจเย็น', platoon: 'หมวด 3', number: '84' },
-  { id: 'p85', rank: 'พลฯ', firstName: 'ธัณชนก', lastName: 'หาญกล้า', platoon: 'หมวด 3', number: '85' },
-  { id: 'p86', rank: 'พลฯ', firstName: 'กรัณย์พล', lastName: 'ไทยสงวน', platoon: 'หมวด 3', number: '86' },
-  { id: 'p87', rank: 'พลฯ', firstName: 'กิตติพงษ์', lastName: 'ลึกวิลัย', platoon: 'หมวด 3', number: '87' },
-  { id: 'p88', rank: 'พลฯ', firstName: 'รัฐภูมิ', lastName: 'ปินะทานัง', platoon: 'หมวด 3', number: '88' },
-  { id: 'p89', rank: 'พลฯ', firstName: 'ศิศีระ', lastName: 'เกิดวิเศษ', platoon: 'หมวด 3', number: '89' },
-  { id: 'p90', rank: 'พลฯ', firstName: 'เกรียงไกร', lastName: 'กันทะวงศ์', platoon: 'หมวด 3', number: '90' },
-  { id: 'p91', rank: 'พลฯ', firstName: 'ชัชวาล', lastName: 'แร่เพ็ชร์', platoon: 'หมวด 3', number: '91' },
-  { id: 'p92', rank: 'พลฯ', firstName: 'ศรายุทธ', lastName: 'ศรีรักษา', platoon: 'หมวด 3', number: '92' },
-  { id: 'p93', rank: 'พลฯ', firstName: 'ชินพัฒน์', lastName: 'แก้วผ่อง', platoon: 'หมวด 3', number: '93' },
-  { id: 'p94', rank: 'พลฯ', firstName: 'สถิตคุณ', lastName: 'พงษ์เขียว', platoon: 'หมวด 3', number: '94' },
-  { id: 'p95', rank: 'พลฯ', firstName: 'สิทธิพล', lastName: 'อยู่เย็น', platoon: 'หมวด 3', number: '95' },
-  { id: 'p96', rank: 'พลฯ', firstName: 'สุทธิพงศ์', lastName: 'วงษ์ขาว', platoon: 'หมวด 3', number: '96' },
-  { id: 'p97', rank: 'พลฯ', firstName: 'วศิน', lastName: 'วังสีราช', platoon: 'หมวด 3', number: '97' },
-  { id: 'p98', rank: 'พลฯ', firstName: 'ศรายุทธ', lastName: 'บัวแย้ม', platoon: 'หมวด 3', number: '98' },
-  { id: 'p99', rank: 'พลฯ', firstName: 'สาธิต', lastName: 'อินทศรี', platoon: 'หมวด 3', number: '99' },
-  { id: 'p100', rank: 'พลฯ', firstName: 'จักรินทร์', lastName: 'พอกเพิ่มดี', platoon: 'หมวด 3', number: '100' },
-  { id: 'p101', rank: 'พลฯ', firstName: 'ณภัทร', lastName: 'สิงคำสอน', platoon: 'หมวด 3', number: '101' },
-  { id: 'p102', rank: 'พลฯ', firstName: 'นัทธพงศ์', lastName: 'ประดิษฐตระกูล', platoon: 'หมวด 3', number: '102' },
-  { id: 'p103', rank: 'พลฯ', firstName: 'ภาสกร', lastName: 'สุวรรณทอง', platoon: 'หมวด 3', number: '103' },
-  { id: 'p104', rank: 'พลฯ', firstName: 'อัครพล', lastName: 'ดอนโหน่งฃา', platoon: 'หมวด 3', number: '104' },
-  { id: 'p105', rank: 'พลฯ', firstName: 'ภัทรกร', lastName: 'กันยา', platoon: 'หมวด 3', number: '105' },
-  { id: 'p106', rank: 'พลฯ', firstName: 'จรูญ', lastName: 'สุขแก้ว', platoon: 'หมวด 3', number: '106' },
-  { id: 'p107', rank: 'พลฯ', firstName: 'ณภัทร', lastName: 'เกิดที่สุด', platoon: 'หมวด 3', number: '107' },
-  { id: 'p108', rank: 'พลฯ', firstName: 'วรเดช', lastName: 'บุญคง', platoon: 'หมวด 3', number: '108' },
-  { id: 'p109', rank: 'พลฯ', firstName: 'พงษ์พิพัฒน์', lastName: 'สิมบุตร', platoon: 'หมวด 3', number: '109' },
-  { id: 'p110', rank: 'พลฯ', firstName: 'ศรายุทธ์', lastName: 'อ่ำทุ่งพงษ์', platoon: 'หมวด 3', number: '110' },
-  { id: 'p111', rank: 'พลฯ', firstName: 'ปัฐวี', lastName: 'เลื่อนเพชร', platoon: 'หมวด 3', number: '111' },
-  { id: 'p112', rank: 'พลฯ', firstName: 'ฐิติกร', lastName: 'ศรีโยธิน', platoon: 'หมวด 3', number: '112' },
-  { id: 'p113', rank: 'พลฯ', firstName: 'สุธิศักดิ์', lastName: 'อุ่นบุญมา', platoon: 'หมวด 3', number: '113' },
-  { id: 'p114', rank: 'พลฯ', firstName: 'ปริญญา', lastName: 'จำปาหอม', platoon: 'หมวด 3', number: '114' },
-  { id: 'p115', rank: 'พลฯ', firstName: 'ณัฐดนัย', lastName: 'อ่อนสำอางค์', platoon: 'หมวด 3', number: '115' },
-  { id: 'p116', rank: 'พลฯ', firstName: 'นัทธภูมิ', lastName: 'จันที', platoon: 'หมวด 3', number: '116' },
-  { id: 'p117', rank: 'พลฯ', firstName: 'อาคาพงษ์', lastName: 'เอกอาชาชัย', platoon: 'หมวด 3', number: '117' },
-  // หมวด 4
-  { id: 'p118', rank: 'พลฯ', firstName: 'ธีรภัทร', lastName: 'แซ่ลี้', platoon: 'หมวด 4', number: '118' },
-  { id: 'p119', rank: 'พลฯ', firstName: 'คงพันธ์', lastName: 'สุขชู', platoon: 'หมวด 4', number: '119' },
-  { id: 'p120', rank: 'พลฯ', firstName: 'เดโชชัย', lastName: 'ใจเย็น', platoon: 'หมวด 4', number: '120' },
-  { id: 'p121', rank: 'พลฯ', firstName: 'รัชชานนท์', lastName: 'บุญปั๋น', platoon: 'หมวด 4', number: '121' },
-  { id: 'p122', rank: 'พลฯ', firstName: 'วีรพล', lastName: 'ปู่ลัวะ', platoon: 'หมวด 4', number: '122' },
-  { id: 'p123', rank: 'พลฯ', firstName: 'กฤษณะ', lastName: 'ยานะโส', platoon: 'หมวด 4', number: '123' },
-  { id: 'p124', rank: 'พลฯ', firstName: 'ไกรวุธ', lastName: 'หาวา', platoon: 'หมวด 4', number: '124' },
-  { id: 'p125', rank: 'พลฯ', firstName: 'พงศ์ภรณ์', lastName: 'ชานุวัจน์', platoon: 'หมวด 4', number: '125' },
-  { id: 'p126', rank: 'พลฯ', firstName: 'พีรวิชญ์', lastName: 'หอมลา', platoon: 'หมวด 4', number: '126' },
-  { id: 'p127', rank: 'พลฯ', firstName: 'ธนพล', lastName: 'บุญปัญญาโรจน์', platoon: 'หมวด 4', number: '127' },
-  { id: 'p128', rank: 'พลฯ', firstName: 'ณัฐวุฒิ', lastName: 'โกชุม', platoon: 'หมวด 4', number: '128' },
-  { id: 'p129', rank: 'พลฯ', firstName: 'กรกช', lastName: 'ภีระคำ', platoon: 'หมวด 4', number: '129' },
-  { id: 'p130', rank: 'พลฯ', firstName: 'สิทธิพงค์', lastName: 'คำหมั้น', platoon: 'หมวด 4', number: '130' },
-  { id: 'p131', rank: 'พลฯ', firstName: 'วีระพงษ์', lastName: 'ใจมาคำ', platoon: 'หมวด 4', number: '131' },
-  { id: 'p132', rank: 'พลฯ', firstName: 'ปาราเมธ', lastName: 'สุขสุมิตร', platoon: 'หมวด 4', number: '132' },
-  { id: 'p133', rank: 'พลฯ', firstName: 'ศุภกร', lastName: 'น้อยเอี่ยม', platoon: 'หมวด 4', number: '133' },
-  { id: 'p134', rank: 'พลฯ', firstName: 'สุรนาท', lastName: 'โตส้ม', platoon: 'หมวด 4', number: '134' },
-  { id: 'p135', rank: 'พลฯ', firstName: 'อรรถกร', lastName: 'โคกเทียน', platoon: 'หมวด 4', number: '135' },
-  { id: 'p136', rank: 'พลฯ', firstName: 'พงศ์พิสุทธิ์', lastName: 'ใหม่ศรี', platoon: 'หมวด 4', number: '136' },
-  { id: 'p137', rank: 'พลฯ', firstName: 'ภีมพล', lastName: 'จูเที่ยง', platoon: 'หมวด 4', number: '137' },
-  { id: 'p138', rank: 'พลฯ', firstName: 'บรรจง', lastName: 'ตรีเนตร', platoon: 'หมวด 4', number: '138' },
-  { id: 'p139', rank: 'พลฯ', firstName: 'พรเทพ', lastName: 'อารมณ์', platoon: 'หมวด 4', number: '139' },
-  { id: 'p140', rank: 'พลฯ', firstName: 'สุทธิพงษ์', lastName: 'เมืองมูล', platoon: 'หมวด 4', number: '140' },
-  { id: 'p141', rank: 'พลฯ', firstName: 'กรกฤต', lastName: 'เขื่อนชนะ', platoon: 'หมวด 4', number: '141' },
-  { id: 'p142', rank: 'พลฯ', firstName: 'ตระกูล', lastName: 'ถิ่นสุข', platoon: 'หมวด 4', number: '142' },
-  { id: 'p143', rank: 'พลฯ', firstName: 'อภิวัฒน์', lastName: 'บุญธรรม', platoon: 'หมวด 4', number: '143' },
-  { id: 'p144', rank: 'พลฯ', firstName: 'ธนาวัฒน์', lastName: 'กาบแก้ว', platoon: 'หมวด 4', number: '144' },
-  { id: 'p145', rank: 'พลฯ', firstName: 'ณัฐกุล', lastName: 'ฉิมสุนทร', platoon: 'หมวด 4', number: '145' },
-  { id: 'p146', rank: 'พลฯ', firstName: 'ณัฐภัทร', lastName: 'เจริญรุ่ง', platoon: 'หมวด 4', number: '146' },
-  { id: 'p147', rank: 'พลฯ', firstName: 'ธนกร', lastName: 'ศรีเลิศ', platoon: 'หมวด 4', number: '147' },
-  { id: 'p148', rank: 'พลฯ', firstName: 'อัศนี', lastName: 'มีศรี', platoon: 'หมวด 4', number: '148' },
-  { id: 'p149', rank: 'พลฯ', firstName: 'นรธีร์', lastName: 'สังข์ทอง', platoon: 'หมวด 4', number: '149' },
-  { id: 'p150', rank: 'พลฯ', firstName: 'ทศพล', lastName: 'ประจง', platoon: 'หมวด 4', number: '150' },
-  { id: 'p151', rank: 'พลฯ', firstName: 'นันทพงศ์', lastName: 'ทักท้วง', platoon: 'หมวด 4', number: '151' },
-  { id: 'p152', rank: 'พลฯ', firstName: 'เรืองเดช', lastName: 'จันทขาว', platoon: 'หมวด 4', number: '152' },
-  { id: 'p153', rank: 'พลฯ', firstName: 'ภูวดล', lastName: 'ครุธชาติ', platoon: 'หมวด 4', number: '153' },
-  { id: 'p154', rank: 'พลฯ', firstName: 'พัทธพล', lastName: 'คเชนทร', platoon: 'หมวด 4', number: '154' },
-  { id: 'p155', rank: 'พลฯ', firstName: 'อธิชา', lastName: 'ทองพิมม์', platoon: 'หมวด 4', number: '155' },
-  { id: 'p156', rank: 'พลฯ', firstName: 'อายุวัต', lastName: 'สมทิพย์', platoon: 'หมวด 4', number: '156' },
+// รายการอาการที่พบบ่อย (แตะเพื่อใส่/เอาออกได้ทันที ไม่ต้องพิมพ์บนมือถือ)
+const QUICK_SYMPTOMS = [
+  'ไข้ ไอ เจ็บคอ',
+  'ปวดศีรษะ ตัวร้อน',
+  'มีไข้ หนาวสั่น',
+  'ผื่นคัน / ผิวหนังอักเสบ',
+  'ปวดท้อง แน่นท้อง',
+  'ท้องเสีย ถ่ายเหลว',
+  'กล้ามเนื้ออักเสบ ปวดหลัง',
+  'แผลถลอก / ฟกช้ำ',
+  'ตาแดง / เคืองตา',
+  'ทำแผล / ล้างแผล'
 ]
 
-function formatThaiDate(dateStr) {
-  if (!dateStr) return ''
-  const [, m, d] = dateStr.split('-').map(Number)
-  const dt = new Date(dateStr)
-  if (isNaN(dt)) return ''
-  const y = dt.getFullYear() + 543
-  return `${d} ${THAI_MONTHS[m - 1]} ${y.toString().slice(-2)}`
-}
+// เวลานัดหมายที่พบบ่อย (แตะเลือกได้ทันที)
+const QUICK_TIMES = ['08:30', '09:00', '10:00', '13:30']
 
 export default function PatientForm({ date, onSave, onClose, editData }) {
   const { patients: apiPatients } = usePatients()
@@ -185,8 +32,17 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
 
   const [step, setStep] = useState(editData ? 'form' : 'select')
   const [search, setSearch] = useState('')
+  const [selectedPlatoon, setSelectedPlatoon] = useState('ทั้งหมด')
   const [selected, setSelected] = useState(editData?.patient || null)
-  const [showAdvanced, setShowAdvanced] = useState(false)
+
+  // ปิด Modal เมื่อกด Escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
 
   const [apptType, setApptType] = useState(() => {
     if (!editData) return 'none'
@@ -212,14 +68,20 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
     isEveryday: editData?.patient?.isEveryday || false,
   })
 
-  const filtered = search.trim()
-    ? allPatients.filter(p => {
-      const full = `${p.rank} ${p.firstName} ${p.lastName} ${p.platoon} ${p.number}`
-      return full.toLowerCase().includes(search.toLowerCase()) ||
-        p.firstName.includes(search) || p.lastName.includes(search) ||
-        p.number?.includes(search)
+  // กรองรายชื่อทหารทั้งจากคำค้นหาและหมวด
+  const filtered = useMemo(() => {
+    return allPatients.filter(p => {
+      if (selectedPlatoon !== 'ทั้งหมด') {
+        const pl = String(p.platoon || '')
+        if (!pl.includes(selectedPlatoon.replace('หมวด ', ''))) return false
+      }
+
+      if (!search.trim()) return true
+      const q = search.toLowerCase()
+      const full = `${p.code || ''} ${p.rank} ${p.firstName} ${p.lastName} ${p.platoon} ${p.number} ${p.disease || ''} ${p.citizenId || ''}`.toLowerCase()
+      return full.includes(q)
     })
-    : allPatients
+  }, [allPatients, selectedPlatoon, search])
 
   const handleSelect = (p) => {
     setSelected(p)
@@ -229,6 +91,24 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
 
   const handleChange = (field, value) => {
     setForm(f => ({ ...f, [field]: value }))
+  }
+
+  // ฟังก์ชันแตะเพื่อใส่/ถอดอาการที่พบบ่อย
+  const handleToggleSymptom = (chip) => {
+    setForm(f => {
+      const cur = (f.symptoms || '').trim()
+      if (!cur) return { ...f, symptoms: chip }
+      if (cur.includes(chip)) {
+        // ถอดออกถ้าแตะซ้ำ
+        const updated = cur
+          .split(/,\s*/)
+          .filter(s => s.trim() !== chip)
+          .join(', ')
+        return { ...f, symptoms: updated }
+      }
+      // เพิ่มต่อท้าย
+      return { ...f, symptoms: `${cur}, ${chip}` }
+    })
   }
 
   const handleSave = () => {
@@ -259,46 +139,94 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className="modal-handle" />
+        
+        {/* Modal Header */}
         <div className="modal-header">
-          <span style={{ fontSize: '1.2rem' }}>🏥</span>
+          <Building2 size={20} style={{ color: 'var(--green-600)' }} />
           <h2 className="modal-title">{editData ? 'แก้ไขผู้ป่วย' : 'เพิ่มผู้ป่วย'}</h2>
-          <button className="btn btn-ghost btn-icon btn-sm" onClick={onClose} id="close-modal-btn">
+          <button 
+            className="btn btn-ghost btn-icon btn-sm" 
+            onClick={onClose} 
+            id="close-modal-btn"
+            aria-label="ปิดหน้าต่าง"
+          >
             <X size={18} />
           </button>
         </div>
 
+        {/* Modal Body */}
         <div className="modal-body">
           {/* Step 1: Select Patient */}
           {step === 'select' && (
             <div className="fade-in">
-              <div className="section-divider"><span>เลือกรายชื่อผู้ป่วย</span></div>
+              <div className="section-divider" style={{ marginTop: 0 }}><span>เลือกรายชื่อผู้ป่วย</span></div>
 
-              <div className="form-group">
-                <div className="input-group" style={{ marginBottom: '0.5rem' }}>
+              {/* Platoon Filter Pills (แตะเลือกหมวดได้ด้วยนิ้วโป้ง) */}
+              <div style={{
+                display: 'flex',
+                gap: '0.35rem',
+                overflowX: 'auto',
+                paddingBottom: '0.5rem',
+                marginBottom: '0.5rem',
+                scrollbarWidth: 'none',
+              }}>
+                {PLATOONS.map(pl => {
+                  const active = selectedPlatoon === pl
+                  return (
+                    <button
+                      key={pl}
+                      type="button"
+                      onClick={() => setSelectedPlatoon(pl)}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        borderRadius: 'var(--radius-full)',
+                        border: active ? '1.5px solid var(--green-600)' : '1px solid var(--gray-200)',
+                        background: active ? 'var(--green-50)' : 'white',
+                        color: active ? 'var(--green-700)' : 'var(--gray-600)',
+                        fontSize: '0.8rem',
+                        fontWeight: active ? 700 : 500,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        minHeight: '34px',
+                      }}
+                    >
+                      {pl}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Search Box */}
+              <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                <div className="input-group">
                   <Search size={16} className="input-icon" />
                   <input
                     id="patient-search"
                     type="text"
+                    inputMode="search"
                     className="form-control"
-                    placeholder="ค้นหาชื่อ, นามสกุล, หมวด, เลขที่..."
+                    placeholder="พิมพ์ชื่อ, นามสกุล, เลขที่, หรือรหัส ANA..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     autoFocus
                   />
                   {search && (
                     <button
-                      style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray-400)' }}
+                      type="button"
+                      aria-label="ล้างคำค้นหา"
+                      style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray-400)', padding: '0.3rem' }}
                       onClick={() => setSearch('')}
                     >
-                      <X size={14} />
+                      <X size={15} />
                     </button>
                   )}
                 </div>
 
+                {/* Search Results List */}
                 <div className="search-results">
                   {filtered.length === 0 ? (
-                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--gray-400)', fontSize: '0.875rem' }}>
-                      ไม่พบรายชื่อ
+                    <div style={{ padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--gray-400)', fontSize: '0.875rem' }}>
+                      ไม่พบรายชื่อในระบบ
                     </div>
                   ) : filtered.map(p => (
                     <div
@@ -307,8 +235,22 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
                       onClick={() => handleSelect(p)}
                       id={`patient-${p.id}`}
                     >
-                      <strong>{p.rank} {p.firstName} {p.lastName}</strong>
-                      <span>{p.platoon} เลขที่ {p.number}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <strong style={{ fontSize: '0.95rem' }}>{p.rank} {p.firstName} {p.lastName}</strong>
+                        {p.code && (
+                          <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--green-700)', background: 'var(--green-50)', border: '1px solid var(--green-200)', padding: '0.05rem 0.35rem', borderRadius: '4px' }}>
+                            {p.code}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)', fontWeight: 600 }}>{p.platoon} เลขที่ {p.number}</span>
+                        {p.disease && p.disease !== '-' && (
+                          <span style={{ fontSize: '0.72rem', color: '#b91c1c', background: '#fee2e2', padding: '0.05rem 0.35rem', borderRadius: '4px', fontWeight: 600 }}>
+                            โรค: {p.disease}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -322,17 +264,40 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
                   setSelected({ id: 'manual', rank: 'พลฯ', firstName: '', lastName: '', platoon: 'หมวด 1', number: '' })
                   setStep('manual')
                 }}
+                style={{ minHeight: '44px' }}
               >
                 กรอกรายชื่อด้วยตนเอง
               </button>
+
+              <div style={{ marginTop: '0.85rem', textAlign: 'center' }}>
+                <Link
+                  href="/patients"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    fontSize: '0.82rem',
+                    color: 'var(--green-700)',
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                    padding: '0.4rem 0.75rem',
+                    background: 'var(--green-50)',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--green-200)',
+                  }}
+                >
+                  <Users size={14} />
+                  <span>จัดการรายชื่อทหาร / นำเข้าผลัดใหม่</span>
+                </Link>
+              </div>
             </div>
           )}
 
           {/* Step 1.5: Manual entry */}
           {step === 'manual' && (
             <div className="fade-in">
-              <div className="section-divider"><span>กรอกรายชื่อด้วยตนเอง</span></div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 2fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+              <div className="section-divider" style={{ marginTop: 0 }}><span>กรอกรายชื่อด้วยตนเอง</span></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr 2fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">ยศ</label>
                   <input
@@ -340,17 +305,17 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
                     className="form-control"
                     value={selected?.rank || ''}
                     onChange={e => setSelected(s => ({ ...s, rank: e.target.value }))}
-                    placeholder="พลฯ"
+                    placeholder="ยศ"
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">ชื่อ</label>
+                  <label className="form-label">ชื่อ *</label>
                   <input
                     type="text"
                     className="form-control"
                     value={selected?.firstName || ''}
                     onChange={e => setSelected(s => ({ ...s, firstName: e.target.value }))}
-                    placeholder="ชื่อจริง"
+                    placeholder="ชื่อ"
                     autoFocus
                   />
                 </div>
@@ -374,13 +339,14 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
                     value={selected?.platoon || ''}
                     onChange={e => setSelected(s => ({ ...s, platoon: e.target.value }))}
                   >
-                    {PLATOONS.map(p => <option key={p}>{p}</option>)}
+                    {PLATOONS.slice(1).map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">เลขที่</label>
                   <input
                     type="text"
+                    inputMode="numeric"
                     className="form-control"
                     value={selected?.number || ''}
                     onChange={e => setSelected(s => ({ ...s, number: e.target.value }))}
@@ -389,15 +355,17 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button className="btn btn-ghost btn-sm" onClick={() => setStep('select')}>← กลับ</button>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem' }}>
+                <button className="btn btn-ghost" onClick={() => setStep('select')} style={{ flex: 1 }}>
+                  ยกเลิก
+                </button>
                 <button
-                  className="btn btn-primary flex-1"
+                  className="btn btn-primary"
                   disabled={!selected?.firstName}
                   onClick={() => setStep('form')}
-                  style={{ flex: 1 }}
+                  style={{ flex: 2 }}
                 >
-                  ถัดไป →
+                  ถัดไป
                 </button>
               </div>
             </div>
@@ -408,56 +376,101 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
             <div className="fade-in">
               {/* Selected Patient Display */}
               <div className="selected-patient">
-                <span style={{ fontSize: '1.5rem' }}>👤</span>
-                <div className="selected-patient-info">
-                  <strong>{fullName}</strong>
-                  <span>{metaInfo}</span>
+                <User size={24} style={{ color: 'var(--green-600)', flexShrink: 0 }} />
+                <div className="selected-patient-info" style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    <strong>{fullName}</strong>
+                    {selected?.code && (
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--green-700)', background: 'var(--green-50)', border: '1px solid var(--green-200)', padding: '0.1rem 0.35rem', borderRadius: '4px' }}>
+                        {selected.code}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--gray-500)', marginTop: '0.15rem' }}>
+                    <span>{metaInfo}</span>
+                    {selected?.unit && <span style={{ marginLeft: '0.4rem', color: 'var(--gray-400)' }}>• {selected.unit}</span>}
+                  </div>
+                  {selected?.disease && selected.disease !== '-' && (
+                    <div style={{ marginTop: '0.35rem', padding: '0.25rem 0.5rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '4px', color: '#b91c1c', fontSize: '0.78rem', fontWeight: 600 }}>
+                      โรคประจำตัว: {selected.disease}
+                    </div>
+                  )}
                 </div>
                 <button className="btn-change" onClick={() => setStep('select')}>เปลี่ยน</button>
               </div>
 
-              {/* Destination Selector */}
-              <div className="form-group">
+              {/* Destination Selector (ปุ่มใหญ่แตะง่าย) */}
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
                 <label className="form-label">ส่งป่วยที่</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  {['ตร.ศบบ.', 'รพ. อปร.ฯ'].map(dest => (
-                    <button
-                      key={dest}
-                      type="button"
-                      id={`dest-${dest}`}
-                      onClick={() => handleChange('destination', dest)}
-                      style={{
-                        flex: 1,
-                        padding: '0.65rem',
-                        borderRadius: 'var(--radius-md)',
-                        border: form.destination === dest
-                          ? '2px solid var(--green-500)'
-                          : '1.5px solid var(--gray-200)',
-                        background: form.destination === dest
-                          ? 'linear-gradient(135deg, var(--green-500), var(--green-600))'
-                          : 'white',
-                        color: form.destination === dest ? 'white' : 'var(--gray-600)',
-                        fontFamily: 'var(--font-th)',
-                        fontSize: '0.9rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        boxShadow: form.destination === dest ? '0 4px 12px rgba(22,163,74,0.3)' : 'none',
-                      }}
-                    >
-                      {dest === 'ตร.ศบบ.' ? 'ตร.ศบบ.' : 'รพ. อปร.ฯ'}
-                    </button>
-                  ))}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  {['ตร.ศบบ.', 'รพ. อปร.ฯ'].map(dest => {
+                    const isSelected = form.destination === dest
+                    return (
+                      <button
+                        key={dest}
+                        type="button"
+                        id={`dest-${dest}`}
+                        onClick={() => handleChange('destination', dest)}
+                        style={{
+                          minHeight: '48px',
+                          padding: '0.75rem',
+                          borderRadius: 'var(--radius-md)',
+                          border: isSelected ? '2px solid var(--green-500)' : '1.5px solid var(--gray-200)',
+                          background: isSelected ? 'var(--green-50)' : 'white',
+                          color: isSelected ? 'var(--green-800)' : 'var(--gray-700)',
+                          fontFamily: 'var(--font-th)',
+                          fontSize: '0.95rem',
+                          fontWeight: isSelected ? 700 : 500,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.4rem',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        {isSelected && <Check size={16} style={{ color: 'var(--green-600)' }} />}
+                        <span>{dest}</span>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
-              {/* Symptoms */}
-              <div className="form-group">
-                <label className="form-label">อาการ</label>
+              {/* Symptoms Input + Quick Chips */}
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <label className="form-label" style={{ marginBottom: 0 }}>อาการ</label>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--gray-400)' }}>แตะตัวเลือกด่วนด้านล่างได้</span>
+                </div>
+
+                {/* Quick Symptom Chips */}
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.35rem',
+                  marginBottom: '0.6rem',
+                }}>
+                  {QUICK_SYMPTOMS.map(chip => {
+                    const isActive = (form.symptoms || '').includes(chip)
+                    return (
+                      <button
+                        key={chip}
+                        type="button"
+                        className={`quick-chip ${isActive ? 'active' : ''}`}
+                        onClick={() => handleToggleSymptom(chip)}
+                      >
+                        {isActive && <Check size={12} />}
+                        <span>{chip}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+
                 <textarea
                   id="symptoms-input"
                   className="form-control"
-                  placeholder="กรอกอาการ..."
+                  placeholder="พิมพ์อาการ หรือแตะตัวเลือกด่วนด้านบน..."
                   value={form.symptoms}
                   onChange={e => handleChange('symptoms', e.target.value)}
                   rows={2}
@@ -465,45 +478,53 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
               </div>
 
               {/* Appointment */}
-              <div style={{ background: 'var(--gray-50)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', marginTop: '1rem' }}>
+              <div style={{
+                background: 'var(--gray-50)',
+                padding: '1rem',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--gray-200)',
+                marginBottom: '1rem'
+              }}>
                 <div style={{ marginBottom: '0.75rem' }}>
-                  <label className="form-label" style={{ marginBottom: '0.5rem' }}>การนัดหมายครั้งถัดไป</label>
-                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                    <label className="checkbox-label" style={{ padding: 0 }}>
-                      <input
-                        type="radio"
-                        checked={apptType === 'date'}
-                        onChange={() => setApptType('date')}
-                        style={{ borderRadius: '50%' }}
-                      />
-                      ระบุวันที่
-                    </label>
-                    <label className="checkbox-label" style={{ padding: 0 }}>
-                      <input
-                        type="radio"
-                        checked={apptType === 'text'}
-                        onChange={() => setApptType('text')}
-                        style={{ borderRadius: '50%' }}
-                      />
-                      ระบุเป็นข้อความ
-                    </label>
-                    <label className="checkbox-label" style={{ padding: 0 }}>
-                      <input
-                        type="radio"
-                        checked={apptType === 'none'}
-                        onChange={() => setApptType('none')}
-                        style={{ borderRadius: '50%' }}
-                      />
-                      ไม่มีนัด
-                    </label>
+                  <label className="form-label" style={{ marginBottom: '0.5rem', fontWeight: 700 }}>
+                    การนัดหมายครั้งถัดไป
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {[
+                      { type: 'none', label: 'ไม่มีนัด' },
+                      { type: 'date', label: 'ระบุวันที่' },
+                      { type: 'text', label: 'ระบุข้อความ' },
+                    ].map(item => {
+                      const active = apptType === item.type
+                      return (
+                        <button
+                          key={item.type}
+                          type="button"
+                          onClick={() => setApptType(item.type)}
+                          style={{
+                            flex: 1,
+                            minHeight: '38px',
+                            borderRadius: 'var(--radius-sm)',
+                            border: active ? '1.5px solid var(--green-600)' : '1px solid var(--gray-200)',
+                            background: active ? 'var(--green-50)' : 'white',
+                            color: active ? 'var(--green-800)' : 'var(--gray-600)',
+                            fontSize: '0.82rem',
+                            fontWeight: active ? 700 : 500,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {item.label}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
 
                 {apptType !== 'none' && (
-                  <div className="appt-row">
+                  <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <div>
-                      <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>
-                        {apptType === 'date' ? 'วันที่นัด' : 'วันที่นัด (จำเป็นต้องระบุเพื่อลงนัดล่วงหน้า)'}
+                      <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--gray-600)' }}>
+                        วันที่นัด:
                       </label>
                       <input
                         type="date"
@@ -511,131 +532,83 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
                         value={form.appointmentDate}
                         onChange={e => handleChange('appointmentDate', e.target.value)}
                       />
-                      {apptType === 'text' && (
-                        <div style={{ marginTop: '0.5rem' }}>
-                          <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>
-                            ข้อความนัด (เช่น ทำแผล)
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="เช่น นัดล้างแผล"
-                            value={form.appointmentText}
-                            onChange={e => handleChange('appointmentText', e.target.value)}
-                          />
-                          <label className="checkbox-label" style={{ marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <input
-                              type="checkbox"
-                              checked={form.isEveryday}
-                              onChange={e => handleChange('isEveryday', e.target.checked)}
-                            />
-                            นัดต่อเนื่องทุกวัน
-                          </label>
-                        </div>
-                      )}
                     </div>
-                    <div>
-                      <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>เวลานัด (ถ้ามี)</label>
-                      <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
-                        <select
+
+                    {apptType === 'text' && (
+                      <div>
+                        <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--gray-600)' }}>
+                          ข้อความนัด:
+                        </label>
+                        <input
+                          type="text"
                           className="form-control"
-                          style={{ padding: '0.5rem', textAlign: 'center' }}
-                          value={form.appointmentTime ? form.appointmentTime.split(':')[0] : ''}
-                          onChange={e => {
-                            const h = e.target.value
-                            const m = form.appointmentTime ? (form.appointmentTime.split(':')[1] || '00') : '00'
-                            handleChange('appointmentTime', h ? `${h}:${m}` : '')
-                          }}
-                        >
-                          <option value="">--</option>
-                          {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map(h => (
-                            <option key={h} value={h}>{h}</option>
-                          ))}
-                        </select>
-                        <span>:</span>
-                        <select
-                          className="form-control"
-                          style={{ padding: '0.5rem', textAlign: 'center' }}
-                          value={form.appointmentTime ? (form.appointmentTime.split(':')[1] || '') : ''}
-                          onChange={e => {
-                            const m = e.target.value
-                            const h = form.appointmentTime ? (form.appointmentTime.split(':')[0] || '09') : '09'
-                            handleChange('appointmentTime', m ? `${h}:${m}` : '')
-                          }}
-                        >
-                          {['00','05','10','15','20','25','30','35','40','45','50','55'].map(m => (
-                            <option key={m} value={m}>{m}</option>
-                          ))}
-                        </select>
+                          placeholder="เช่น นัดล้างแผล, นัดตรวจซ้ำ"
+                          value={form.appointmentText}
+                          onChange={e => handleChange('appointmentText', e.target.value)}
+                        />
+                        <label className="checkbox-label" style={{ marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={form.isEveryday}
+                            onChange={e => handleChange('isEveryday', e.target.checked)}
+                          />
+                          <span>นัดต่อเนื่องทุกวัน</span>
+                        </label>
                       </div>
+                    )}
+
+                    {/* Quick Appointment Times */}
+                    <div>
+                      <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--gray-600)' }}>
+                        เวลานัด:
+                      </label>
+                      <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.45rem', flexWrap: 'wrap' }}>
+                        {QUICK_TIMES.map(t => {
+                          const active = form.appointmentTime === t
+                          return (
+                            <button
+                              key={t}
+                              type="button"
+                              className={`quick-chip ${active ? 'active' : ''}`}
+                              onClick={() => handleChange('appointmentTime', t)}
+                              style={{ minHeight: '34px', fontSize: '0.8rem', padding: '0.25rem 0.6rem' }}
+                            >
+                              <Clock size={12} />
+                              <span>{t} น.</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <input
+                        type="time"
+                        className="form-control"
+                        value={form.appointmentTime}
+                        onChange={e => handleChange('appointmentTime', e.target.value)}
+                      />
                     </div>
                   </div>
                 )}
               </div>
-
-              {/* Advanced
-              <button
-                className="btn btn-ghost btn-sm"
-                style={{ marginTop: '0.75rem', padding: '0.4rem 0', color: 'var(--gray-500)' }}
-                onClick={() => setShowAdvanced(v => !v)}
-              >
-                {showAdvanced ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-                &nbsp;{showAdvanced ? 'ซ่อน' : 'เพิ่มเติม'} (ผลการตรวจ, การรักษา, หมายเหตุ)
-              </button>
-
-              {showAdvanced && (
-                <div className="fade-in" style={{ marginTop: '0.75rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">ผลการตรวจ</label>
-                    <textarea
-                      className="form-control"
-                      placeholder="ผลการตรวจ..."
-                      value={form.examResult}
-                      onChange={e => handleChange('examResult', e.target.value)}
-                      rows={2}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">การรักษา / ยาที่ได้รับ</label>
-                    <textarea
-                      id="treatment-input"
-                      className="form-control"
-                      placeholder="รายการยา, การรักษา..."
-                      value={form.treatment}
-                      onChange={e => handleChange('treatment', e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">หมายเหตุ / เพิ่มเติม</label>
-                    <textarea
-                      className="form-control"
-                      placeholder="ข้อมูลเพิ่มเติม..."
-                      value={form.notes}
-                      onChange={e => handleChange('notes', e.target.value)}
-                      rows={2}
-                    />
-                  </div>
-                </div>
-              )} */}
-
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
-                <button className="btn btn-ghost" onClick={onClose} style={{ flex: 1 }}>
-                  ยกเลิก
-                </button>
-                <button
-                  id="save-patient-btn"
-                  className="btn btn-primary"
-                  onClick={handleSave}
-                  style={{ flex: 2 }}
-                >
-                  บันทึก
-                </button>
-              </div>
             </div>
           )}
         </div>
+
+        {/* Sticky Action Footer (ตรึงอยู่ด้านล่างหน้าจอโทรศัพท์เสมอ) */}
+        {step === 'form' && (
+          <div className="modal-footer">
+            <button className="btn btn-ghost" onClick={onClose} style={{ flex: 1, minHeight: '44px' }}>
+              ยกเลิก
+            </button>
+            <button
+              id="save-patient-btn"
+              className="btn btn-primary"
+              onClick={handleSave}
+              style={{ flex: 2, minHeight: '44px', fontWeight: 700 }}
+            >
+              บันทึกข้อมูล
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

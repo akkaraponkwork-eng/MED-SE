@@ -46,6 +46,9 @@ function doPost(e) {
       case 'getDates':
         result = { data: getDates() }
         break
+      case 'replacePatients':
+        result = replacePatients(data.patients)
+        break
       default:
         result = { error: 'Unknown action' }
     }
@@ -64,29 +67,132 @@ function doGet(e) {
 }
 
 // ดึงรายชื่อผู้ป่วย
-// โครงสร้าง Sheet: ยศ | ชื่อ | นามสกุล | หมวด | เลขที่
+// ดึงรายชื่อผู้ป่วย (รองรับทั้งแบบ 5 คอลัมน์เดิม และแบบนำเข้าทหารใหม่ 10 คอลัมน์)
 function getPatients() {
   const ss = SpreadsheetApp.getActiveSpreadsheet()
   const sheet = ss.getSheetByName(SHEET_PATIENTS)
   if (!sheet) return []
 
   const rows = sheet.getDataRange().getValues()
+  if (rows.length <= 1) return []
+
+  const headerRow = rows[0].map(h => String(h || '').trim())
+  
+  // ตรวจสอบตำแหน่งคอลัมน์จากหัวตาราง
+  const colIdx = {
+    code: headerRow.findIndex(h => /รหัส/i.test(h) && !/รหัสภายใน/i.test(h)),
+    rank: headerRow.findIndex(h => /^ยศ/i.test(h)),
+    firstName: headerRow.findIndex(h => /^ชื่อ$/i.test(h) || /^ชื่อ\s*ทหาร/i.test(h)),
+    lastName: headerRow.findIndex(h => /^(นาม)?สกุล$/i.test(h)),
+    platoon: headerRow.findIndex(h => /^หมวด/i.test(h)),
+    number: headerRow.findIndex(h => /^เลขที่$/i.test(h) || /^ลำดับ$/i.test(h)),
+    unit: headerRow.findIndex(h => /^หน่วย/i.test(h)),
+    citizenId: headerRow.findIndex(h => /บัตรประชาชน/i.test(h)),
+    disease: headerRow.findIndex(h => /โรคประจำตัว/i.test(h)),
+    province: headerRow.findIndex(h => /^จังหวัด/i.test(h)),
+  }
+
+  const hasSmartHeader = colIdx.firstName >= 0
+
   const patients = []
 
   for (let i = 1; i < rows.length; i++) {
-    const [rank, firstName, lastName, platoon, number] = rows[i]
-    if (!firstName) continue
+    const row = rows[i]
+    if (!row || row.length === 0) continue
+
+    let code = ''
+    let rank = 'พลฯ'
+    let firstName = ''
+    let lastName = ''
+    let platoon = ''
+    let number = ''
+    let unit = ''
+    let citizenId = ''
+    let disease = ''
+    let province = ''
+
+    if (hasSmartHeader) {
+      firstName = String(row[colIdx.firstName] || '').trim()
+      if (!firstName) continue
+
+      code = colIdx.code >= 0 ? String(row[colIdx.code] || '').trim() : ''
+      rank = colIdx.rank >= 0 ? String(row[colIdx.rank] || 'พลฯ').trim() : 'พลฯ'
+      lastName = colIdx.lastName >= 0 ? String(row[colIdx.lastName] || '').trim() : ''
+      platoon = colIdx.platoon >= 0 ? String(row[colIdx.platoon] || '').trim() : ''
+      number = colIdx.number >= 0 ? String(row[colIdx.number] || '').trim() : ''
+      unit = colIdx.unit >= 0 ? String(row[colIdx.unit] || '').trim() : ''
+      citizenId = colIdx.citizenId >= 0 ? String(row[colIdx.citizenId] || '').trim() : ''
+      disease = colIdx.disease >= 0 ? String(row[colIdx.disease] || '').trim() : ''
+      province = colIdx.province >= 0 ? String(row[colIdx.province] || '').trim() : ''
+    } else {
+      // โครงสร้างเดิม: ยศ | ชื่อ | นามสกุล | หมวด | เลขที่
+      const [r, f, l, p, n] = row
+      firstName = String(f || '').trim()
+      if (!firstName) continue
+      rank = String(r || 'พลฯ').trim()
+      lastName = String(l || '').trim()
+      platoon = String(p || '').trim()
+      number = String(n || '').trim()
+    }
+
     patients.push({
       id: `p${i}`,
+      code,
       rank: rank || 'พลฯ',
-      firstName: String(firstName),
-      lastName: String(lastName || ''),
-      platoon: String(platoon || ''),
-      number: String(number || ''),
+      firstName,
+      lastName,
+      platoon,
+      number: number || String(i),
+      unit,
+      citizenId,
+      disease: disease === '-' ? '' : disease,
+      province,
     })
   }
 
   return patients
+}
+
+// อัปเดตหรือแทนที่รายชื่อผู้ป่วยทั้งหมด (เปลี่ยนผลัดทหาร)
+function replacePatients(patients) {
+  if (!Array.isArray(patients)) {
+    return { error: 'Invalid patients array' }
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet()
+  let sheet = ss.getSheetByName(SHEET_PATIENTS)
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_PATIENTS)
+  }
+
+  // เคลียร์ข้อมูลเดิมทั้งหมดในแผ่นงาน
+  sheet.clear()
+
+  const headers = ['รหัส', 'ยศ', 'ชื่อ', 'นามสกุล', 'หมวด', 'เลขที่', 'หน่วย', 'เลขบัตรประชาชน', 'โรคประจำตัว', 'จังหวัด']
+  const rows = [headers]
+
+  for (let i = 0; i < patients.length; i++) {
+    const p = patients[i]
+    rows.push([
+      p.code || '',
+      p.rank || 'พลฯ',
+      p.firstName || '',
+      p.lastName || '',
+      p.platoon || '',
+      p.number || '',
+      p.unit || '',
+      p.citizenId || '',
+      p.disease || '',
+      p.province || ''
+    ])
+  }
+
+  if (rows.length > 0) {
+    sheet.getRange(1, 1, rows.length, headers.length).setValues(rows)
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#dcfce7')
+  }
+
+  return { success: true, count: patients.length }
 }
 
 // แปลง Date object หรือ string ให้เป็น YYYY-MM-DD เสมอ

@@ -1,9 +1,11 @@
+'use client'
+
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Plus, PieChart, X } from 'lucide-react'
-import { useRecords } from '../hooks/useRecords'
-import PatientDetailsModal from '../components/PatientDetailsModal'
-import { SyncContext } from '../hooks/useSyncContext'
+import { useRouter } from 'next/navigation'
+import { ChevronRight, Plus, PieChart, X, Home, Building2, ClipboardList, Inbox, CheckCircle, Clock, FileSpreadsheet } from 'lucide-react'
+import { useRecords } from '@/hooks/useRecords'
+import PatientDetailsModal from '@/components/PatientDetailsModal'
+import { SyncContext } from '@/hooks/useSyncContext'
 
 const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
 const THAI_MONTHS_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
@@ -21,7 +23,7 @@ function thaiDateLabel(dateStr) {
 }
 
 export default function CalendarView() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const { records, getDatesWithRecords, loading, syncStatus } = useRecords()
   const today = new Date()
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate())
@@ -69,7 +71,7 @@ export default function CalendarView() {
           onClick={() => todayTrr > 0 && setShowDestModal('ตร.ศบบ.')}
         >
           <div className="stat-number" style={{ color: '#2563eb' }}>{todayTrr}</div>
-          <div className="stat-label">🏠 ตร.ศบบ.</div>
+          <div className="stat-label">ตร.ศบบ.</div>
         </div>
         <div 
           className="stat-card" 
@@ -77,7 +79,7 @@ export default function CalendarView() {
           onClick={() => todayHosp > 0 && setShowDestModal('รพ. อปร.ฯ')}
         >
           <div className="stat-number" style={{ color: '#7c3aed' }}>{todayHosp}</div>
-          <div className="stat-label">🏥 รพ. อปร.ฯ</div>
+          <div className="stat-label">รพ. อปร.ฯ</div>
         </div>
       </div>
 
@@ -110,16 +112,25 @@ export default function CalendarView() {
         </div>
       </div>
 
-      {/* Today Button */}
-      <button
-        id="goto-today-btn"
-        className="btn btn-primary btn-full"
-        onClick={() => navigate(`/entry/${todayStr}`)}
-        style={{ marginBottom: '1.25rem' }}
-      >
-        <Plus size={18} />
-        ส่งป่วย / บันทึกกลับ วันนี้
-      </button>
+      {/* Action Buttons */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '0.6rem', marginBottom: '1.25rem' }}>
+        <button
+          id="goto-today-btn"
+          className="btn btn-primary"
+          onClick={() => router.push(`/entry/${todayStr}`)}
+        >
+          <Plus size={18} />
+          <span>ส่งป่วย / บันทึกกลับ วันนี้</span>
+        </button>
+        <button
+          className="btn btn-secondary"
+          onClick={() => window.dispatchEvent(new CustomEvent('open_export_modal'))}
+          title="ส่งออกรายงานส่งป่วยทั้งหมดเป็นไฟล์ Excel"
+        >
+          <FileSpreadsheet size={16} />
+          <span>ส่งออก Excel</span>
+        </button>
+      </div>
 
       {/* Dashboard Donut Chart & Today's List */}
       <div className="card" style={{ marginBottom: '1.25rem' }}>
@@ -176,7 +187,7 @@ export default function CalendarView() {
               {todayTrr > 0 && (
                 <div>
                   <h4 style={{ fontSize: '0.9rem', color: '#1d4ed8', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    🏠 ตร.ศบบ. ({todayTrr} นาย)
+                    ตร.ศบบ. ({todayTrr} นาย)
                   </h4>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                     {todayTrrRecords.map((r, i) => (
@@ -196,7 +207,7 @@ export default function CalendarView() {
               {todayHosp > 0 && (
                 <div>
                   <h4 style={{ fontSize: '0.9rem', color: '#6d28d9', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    🏥 รพ. อปร.ฯ ({todayHosp} นาย)
+                    รพ. อปร.ฯ ({todayHosp} นาย)
                   </h4>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                     {todayHospRecords.map((r, i) => (
@@ -220,7 +231,7 @@ export default function CalendarView() {
       {/* Recent Records */}
       <div className="card">
         <div className="card-header">
-          <span style={{ fontSize: '1.1rem' }}>📋</span>
+          <ClipboardList size={18} style={{ color: 'var(--green-600)' }} />
           <span className="card-title">บันทึกล่าสุด</span>
         </div>
         <div className="card-body" style={{ padding: '0.5rem 0.75rem' }}>
@@ -230,7 +241,7 @@ export default function CalendarView() {
             </div>
           ) : recentDates.length === 0 ? (
             <div className="empty-state" style={{ padding: '2rem' }}>
-              <div className="empty-state-icon">📭</div>
+              <div className="empty-state-icon"><Inbox size={48} /></div>
               <h3>ยังไม่มีบันทึก</h3>
               <p>กดปุ่ม "ส่งป่วย / บันทึกกลับ วันนี้" เพื่อเริ่มต้น</p>
             </div>
@@ -246,7 +257,7 @@ export default function CalendarView() {
                   <li
                     key={dateStr}
                     className="recent-item"
-                    onClick={() => navigate(`/entry/${dateStr}`)}
+                    onClick={() => router.push(`/entry/${dateStr}`)}
                     id={`recent-${dateStr}`}
                   >
                     <div className="recent-date-badge">
@@ -279,7 +290,7 @@ export default function CalendarView() {
         <div className="modal-overlay center" onClick={() => setShowDestModal(null)}>
           <div className="modal" style={{ maxHeight: '80vh' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <span style={{ fontSize: '1.2rem' }}>{showDestModal === 'ตร.ศบบ.' ? '🏠' : '🏥'}</span>
+              {showDestModal === 'ตร.ศบบ.' ? <Home size={20} style={{ color: 'var(--green-600)' }} /> : <Building2 size={20} style={{ color: 'var(--green-600)' }} />}
               <h2 className="modal-title">รายชื่อผู้ป่วยไป {showDestModal}</h2>
               <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowDestModal(null)}>
                 <X size={18} />
@@ -327,7 +338,7 @@ export default function CalendarView() {
         <div className="modal-overlay center" onClick={() => setShowStatusModal(null)}>
           <div className="modal" style={{ maxHeight: '80vh' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <span style={{ fontSize: '1.2rem' }}>{showStatusModal === 'returned' ? '✅' : '⏳'}</span>
+              {showStatusModal === 'returned' ? <CheckCircle size={20} style={{ color: 'var(--green-600)' }} /> : <Clock size={20} style={{ color: 'var(--green-600)' }} />}
               <h2 className="modal-title">รายชื่อผู้ป่วย ({showStatusModal === 'returned' ? 'กลับแล้ว' : 'ยังไม่กลับ'})</h2>
               <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setShowStatusModal(null)}>
                 <X size={18} />
@@ -377,3 +388,4 @@ export default function CalendarView() {
     </SyncContext.Provider>
   )
 }
+

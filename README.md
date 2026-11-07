@@ -1,24 +1,27 @@
-# 🏥 ระบบบันทึกส่งป่วยประจำวัน — ตร.ศบบ.
+# ระบบบันทึกส่งป่วยประจำวัน — ตร.ศบบ.
 
-ระบบ Web Application สำหรับบันทึกและจัดการรายชื่อผู้ป่วยส่งตัวประจำวัน พัฒนาด้วย React + Vite เชื่อมต่อกับ Google Sheets เป็นฐานข้อมูล รองรับการใช้งานทั้งบน **โทรศัพท์มือถือ** และ **คอมพิวเตอร์**
+ระบบ Web Application สำหรับบันทึกและจัดการรายชื่อผู้ป่วยส่งตัวประจำวัน พัฒนาด้วย Next.js (App Router) เชื่อมต่อกับ Google Sheets เป็นฐานข้อมูล รองรับการใช้งานทั้งบน **โทรศัพท์มือถือ** และ **คอมพิวเตอร์**
 
 ---
 
-## ✨ ฟีเจอร์หลัก
+## ฟีเจอร์หลัก
 
 | ฟีเจอร์ | รายละเอียด |
 |---|---|
-| 🔐 ระบบ Login | บังคับล็อกอินก่อนใช้งาน |
-| 📅 ปฏิทิน | ดูวันที่มีบันทึก และสถิติรายเดือน |
-| 👤 เพิ่มผู้ป่วย | ค้นหาจากรายชื่อ 156 คน หรือกรอกเอง |
-| 📋 บันทึกรายวัน | อาการ, ผลการตรวจ, ยา, วันนัดต่อ |
-| 📄 สร้างข้อความ | สร้าง + คัดลอกข้อความสรุปส่งได้ทันที |
-| ☁️ Google Sheets | บันทึกข้อมูลลง Google Sheet อัตโนมัติ |
-| 📱 Responsive | รองรับมือถือและคอมพิวเตอร์ |
+| ระบบ Login | บังคับล็อกอินก่อนใช้งาน |
+| ปฏิทิน | ดูวันที่มีบันทึก และสถิติรายเดือน |
+| เพิ่มผู้ป่วย | ค้นหาจากรายชื่อทหารในผลัด, รหัส ANA, โรคประจำตัว หรือกรอกเอง |
+| จัดการผลัดทหาร | นำเข้ารายชื่อทหารใหม่ (เปลี่ยนผลัด) รองรับแบบฟอร์มทางการ พัน.บร.ศบ. (Excel 31 คอลัมน์) กระจายหมวด 1 - 4 อัตโนมัติ |
+| ส่งออก Excel | ส่งออกข้อมูลเป็นไฟล์ Excel (.xlsx) แบบ 3 แผ่นงาน (ประวัติส่งป่วย + รายชื่อผลัดปัจจุบัน + สรุปสถิติ) เลือกช่วงเวลาได้ |
+| บันทึกรายวัน | อาการ, ผลการตรวจ, ยา, วันนัดต่อ |
+| บันทึกกลับ | บันทึกผลการรักษาและลงนัดหมายล่วงหน้าอัตโนมัติ |
+| สร้างข้อความ | สร้างและคัดลอกข้อความสรุปส่งได้ทันที |
+| Google Sheets | บันทึกข้อมูลลง Google Sheet อัตโนมัติ |
+| Responsive | รองรับมือถือและคอมพิวเตอร์ |
 
 ---
 
-## 🚀 วิธีเริ่มใช้งาน
+## วิธีเริ่มใช้งาน
 
 ### 1. ติดตั้ง Dependencies
 
@@ -32,18 +35,18 @@ npm install
 npm run dev
 ```
 
-เปิดเบราว์เซอร์ไปที่ **http://localhost:5173**
+เปิดเบราว์เซอร์ไปที่ **http://localhost:3000**
 
 ---
 
-## ☁️ การเชื่อมต่อ Google Sheets (Backend)
+## การเชื่อมต่อ Google Sheets (Backend)
 
 > หากยังไม่ตั้งค่า ระบบจะใช้ **LocalStorage** เก็บข้อมูลชั่วคราวแทน
 
 ### ขั้นตอนที่ 1 — เปิด Apps Script
 
-1. เปิด [Google Sheet ของคุณ](https://docs.google.com/spreadsheets/d/1-2hq5uTtA0D0klIo_sP9-qoYDlMuapDN/edit)
-2. คลิก **Extensions (ส่วนขยาย)** → **Apps Script**
+1. เปิด Google Sheet ของคุณ
+2. คลิก **Extensions (ส่วนขยาย)** -> **Apps Script**
 
 ### ขั้นตอนที่ 2 — วางโค้ด
 
@@ -52,18 +55,18 @@ npm run dev
 **แก้ไขชื่อ Sheet** ให้ตรงกับ Tab ใน Google Sheet ของคุณ:
 
 ```js
-const SHEET_PATIENTS = 'รายชื่อ'  // Tab สำหรับรายชื่อทหาร (ถ้าใช้ข้อมูลจาก Sheet ไม่ต้องสร้าง)
+const SHEET_PATIENTS = 'รายชื่อ'  // Tab สำหรับรายชื่อทหาร
 const SHEET_RECORDS  = 'บันทึก'   // Tab สำหรับบันทึกส่งป่วย (ระบบจะสร้างให้อัตโนมัติ)
 ```
 
 ### ขั้นตอนที่ 3 — Deploy เป็น Web App
 
-1. คลิก **Deploy** → **New deployment**
-2. กด ⚙️ → เลือก **Web app**
+1. คลิก **Deploy** -> **New deployment**
+2. เลือก **Web app**
 3. ตั้งค่า:
    - **Execute as:** `Me`
    - **Who has access:** `Anyone`
-4. กด **Deploy** → อนุญาตสิทธิ์
+4. กด **Deploy** -> อนุญาตสิทธิ์
 5. **คัดลอก URL** ที่ได้ เช่น:
    ```
    https://script.google.com/macros/s/AKfycbXXXXXXXX/exec
@@ -74,43 +77,55 @@ const SHEET_RECORDS  = 'บันทึก'   // Tab สำหรับบัน
 แก้ไขไฟล์ `.env`:
 
 ```env
-VITE_GOOGLE_SCRIPT_URL=https://script.google.com/macros/s/AKfycbXXXXXXXX/exec
+NEXT_PUBLIC_GOOGLE_SCRIPT_URL=https://script.google.com/macros/s/AKfycbXXXXXXXX/exec
 ```
 
-> ⚠️ หลังแก้ไข `.env` ให้รีสตาร์ท dev server ด้วยคำสั่ง `npm run dev`
+> หลังแก้ไข `.env` ให้รีสตาร์ท dev server ด้วยคำสั่ง `npm run dev`
 
 ---
 
-## 📁 โครงสร้างโปรเจกต์
+## โครงสร้างโปรเจกต์
 
 ```
 web-med/
-├── index.html                  # HTML หลัก + โหลดฟอนต์ภาษาไทย (Sarabun)
-├── vite.config.js              # ตั้งค่า Vite
+├── next.config.mjs             # Next.js Config
+├── jsconfig.json               # Path alias (@/*)
 ├── package.json                # Dependencies
 ├── .env                        # ตั้งค่า URL ของ Apps Script
 ├── google_apps_script.js       # โค้ดสำหรับวางใน Google Apps Script
+├── public/
+│   └── favicon.svg             # Favicon
 └── src/
-    ├── main.jsx                # Entry point
-    ├── App.jsx                 # Routing + Auth state
-    ├── index.css               # Design System (White/Green Theme)
-    ├── pages/
-    │   ├── Login.jsx           # หน้าเข้าสู่ระบบ
-    │   ├── CalendarView.jsx    # หน้าหลัก (ปฏิทิน + สถิติ)
-    │   └── EntryPage.jsx       # หน้าบันทึกผู้ป่วยรายวัน
+    ├── app/
+    │   ├── globals.css         # Design System (White/Green Theme)
+    │   ├── layout.jsx          # Root Layout + Fonts
+    │   ├── page.jsx            # หน้าหลัก (Dashboard + สถิติ)
+    │   ├── calendar/
+    │   │   └── page.jsx        # หน้าปฏิทินส่งป่วย
+    │   ├── today/
+    │   │   └── page.jsx        # Redirect ไปยังหน้าวันนี้
+    │   └── entry/
+    │       └── [date]/
+    │           └── page.jsx    # หน้าบันทึกผู้ป่วยรายวัน
     ├── components/
+    │   ├── AppShell.jsx        # Client Shell (Auth check + Hydration safe)
     │   ├── Layout.jsx          # Navbar + Mobile Bottom Bar
+    │   ├── Login.jsx           # หน้าเข้าสู่ระบบ
     │   ├── PatientForm.jsx     # Modal กรอกข้อมูลผู้ป่วย
-    │   └── DailyReport.jsx     # สร้างและคัดลอกข้อความสรุป
+    │   ├── PatientDetailsModal.jsx # Modal ดูรายละเอียดผู้ป่วย
+    │   ├── ReturnForm.jsx      # Modal บันทึกข้อมูลการรักษา (กลับจากส่งป่วย)
+    │   ├── DailyReport.jsx     # สร้างและคัดลอกข้อความสรุปส่งป่วย
+    │   └── ReturnReport.jsx    # สร้างและคัดลอกข้อความสรุปกลับ
     ├── hooks/
-    │   └── useRecords.js       # จัดการข้อมูล (LocalStorage + Sync)
+    │   ├── useRecords.js       # จัดการข้อมูล (LocalStorage + Sync)
+    │   └── useSyncContext.js   # Sync status Context
     └── services/
         └── api.js              # เชื่อมต่อ Google Apps Script API
 ```
 
 ---
 
-## 🗂️ โครงสร้างข้อมูลใน Google Sheet
+## โครงสร้างข้อมูลใน Google Sheet
 
 ### Sheet `บันทึก` (สร้างอัตโนมัติ)
 
@@ -126,24 +141,20 @@ web-med/
 | `appointmentTime` | เวลานัด |
 | `notes` | หมายเหตุ / เพิ่มเติม |
 | `noAppointment` | ไม่มีนัดต่อ (true/false) |
-
-### Sheet `รายชื่อ` (สำหรับดึงรายชื่อแบบ Dynamic)
-
-> ⚠️ ถ้าไม่ตั้งค่า Apps Script ระบบจะใช้รายชื่อที่ฝังอยู่ในโปรแกรม (156 คน)
-
-| คอลัมน์ A | B | C | D | E | F |
-|---|---|---|---|---|---|
-| รหัส | ยศ | ชื่อ | สกุล | หน่วย | จังหวัด |
+| `destination` | ส่งป่วยที่ (ตร.ศบบ. / รพ. อปร.ฯ) |
+| `returned` | กลับแล้ว (true/false) |
+| `returnTime` | เวลากลับ |
+| `returnNotes` | หมายเหตุการกลับ |
 
 ---
 
-## 📄 รูปแบบข้อความสรุปรายวัน
+## รูปแบบข้อความสรุปรายวัน
 
 ระบบจะสร้างข้อความในรูปแบบนี้อัตโนมัติ:
 
 ```
 ส่งป่วยประจำวันที่ 23 พ.ค.69
-🏠 ส่งป่วย ตร.ศบบ.
+ส่งป่วย ตร.ศบบ.
 1.พลฯ ธีรภัทร แซ่ลี้ หมวด 4 เลขที่ 118
 อาการ: เชื้อราที่หลัง
 นัดต่อ 27 พ.ค. 69 เวลา 09:00
@@ -157,22 +168,22 @@ web-med/
 
 ---
 
-## 🔧 Tech Stack
+## Tech Stack
 
 | ส่วน | เทคโนโลยี |
 |---|---|
-| Frontend | React 18 + Vite |
+| Framework | Next.js 14 (App Router) |
+| Core | React 18 |
 | Styling | Vanilla CSS (White/Green Theme) |
-| Routing | React Router v6 |
 | Icons | Lucide React |
-| Font | Sarabun (Google Fonts) |
+| Font | Sarabun, Inter (Google Fonts) |
 | Backend | Google Apps Script (Web App) |
 | Database | Google Sheets |
 | Cache | LocalStorage |
 
 ---
 
-## 📱 UI/UX
+## UI/UX
 
 - **Mobile-First Design** — ใช้งานได้ดีบนมือถือ มี Bottom Navigation Bar
 - **Desktop Friendly** — ปรับ Layout อัตโนมัติบนหน้าจอใหญ่
@@ -182,12 +193,12 @@ web-med/
 
 ---
 
-## ⚠️ หมายเหตุ
+## หมายเหตุ
 
 - ข้อมูลจะถูกบันทึกใน **LocalStorage** ก่อนเสมอ แล้ว Sync ไป Google Sheet ในพื้นหลัง
 - หาก Apps Script ไม่ตอบสนอง ข้อมูลจะยังคงอยู่ในเครื่องให้ใช้งานต่อได้
-- **ล้าง LocalStorage** ได้ที่ Developer Tools (F12) → Application → Local Storage
+- **ล้าง LocalStorage** ได้ที่ Developer Tools (F12) -> Application -> Local Storage
 
 ---
 
-*พัฒนาโดย Antigravity AI | สำหรับใช้งานภายใน ตร.ศบบ. เท่านั้น*
+*สำหรับใช้งานภายใน ตร.ศบบ. เท่านั้น*

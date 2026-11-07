@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react'
 import { Copy, Check } from 'lucide-react'
 
@@ -51,18 +53,19 @@ function buildReportText(date, entries) {
   const destKeys = destOrder.filter(d => groups[d])
 
   destKeys.forEach((dest, groupIdx) => {
-    const icon = dest === 'ตร.ศบบ.' ? '🏠' : '🏥'
-    lines.push(`${icon} ส่งป่วย ${dest}`)
+    lines.push(`ส่งป่วย ${dest}`)
 
     groups[dest].forEach((entry, idx) => {
+      if (!entry) return
       const p = entry.patient || {}
       const name = [p.rank, p.firstName, p.lastName].filter(Boolean).join(' ') || 'ไม่ระบุชื่อ'
       // หมวด X เลขที่ XXX
-      const platoonPart = p.platoon ? ` หมวด ${p.platoon} ` : ''
+      const cleanPlatoon = p.platoon ? String(p.platoon).replace(/^หมวด\s*/, '').trim() : ''
+      const platoonPart = cleanPlatoon ? ` หมวด ${cleanPlatoon}` : ''
       const numPart = p.number ? ` เลขที่ ${p.number}` : ''
-      const meta = platoonPart || numPart ? ` ${platoonPart}${numPart}` : ''
+      const meta = platoonPart || numPart ? `${platoonPart}${numPart}` : ''
 
-      lines.push(`${idx + 1}.${name}${meta}`)
+      lines.push(`${idx + 1}.${name}${meta ? ' ' + meta.trim() : ''}`)
 
       if (entry.symptoms) {
         lines.push(`อาการ: ${entry.symptoms}`)

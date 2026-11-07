@@ -1,13 +1,15 @@
+'use client'
+
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Pencil, Trash2, X } from 'lucide-react'
-import { useRecords } from '../hooks/useRecords'
-import PatientForm from '../components/PatientForm'
-import DailyReport from '../components/DailyReport'
-import ReturnForm from '../components/ReturnForm'
-import ReturnReport from '../components/ReturnReport'
-import PatientDetailsModal from '../components/PatientDetailsModal'
-import { SyncContext } from '../hooks/useSyncContext'
+import { useParams, useRouter } from 'next/navigation'
+import { ArrowLeft, Plus, Pencil, Trash2, X, Building2, Home, CheckCircle, FileSpreadsheet } from 'lucide-react'
+import { useRecords } from '@/hooks/useRecords'
+import PatientForm from '@/components/PatientForm'
+import DailyReport from '@/components/DailyReport'
+import ReturnForm from '@/components/ReturnForm'
+import ReturnReport from '@/components/ReturnReport'
+import PatientDetailsModal from '@/components/PatientDetailsModal'
+import { SyncContext } from '@/hooks/useSyncContext'
 
 const THAI_MONTHS_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
 const THAI_MONTHS_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
@@ -42,12 +44,18 @@ function Toast({ msg, onDone }) {
     const t = setTimeout(onDone, 2200)
     return () => clearTimeout(t)
   }, [onDone])
-  return <div className="toast toast-green">✅ {msg}</div>
+  return (
+    <div className="toast toast-green" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+      <CheckCircle size={16} />
+      <span>{msg}</span>
+    </div>
+  )
 }
 
 export default function EntryPage() {
-  const { date } = useParams()
-  const navigate = useNavigate()
+  const params = useParams()
+  const date = params?.date
+  const router = useRouter()
   const { getByDate, add, update, remove, loading, syncStatus } = useRecords()
 
   const [showForm, setShowForm] = useState(false)
@@ -102,7 +110,7 @@ export default function EntryPage() {
   const handleSaveReturn = (record) => {
     update(record)
 
-    let message = record.returned ? 'บันทึกกลับเรียบร้อย ✅' : 'ยกเลิกสถานะกลับแล้ว'
+    let message = record.returned ? 'บันทึกกลับเรียบร้อย' : 'ยกเลิกสถานะกลับแล้ว'
 
     // Cleanup old appointment if cancelled, changed to no appointment, or date changed
     if (returnEntry?.appointmentDate && /^\d{4}-\d{2}-\d{2}/.test(returnEntry.appointmentDate)) {
@@ -115,8 +123,8 @@ export default function EntryPage() {
       if (shouldDeleteOld) {
         const existingEntries = getByDate(oldApptDate)
         const targetEntry = existingEntries.find(e =>
-          e.patient.firstName === record.patient.firstName &&
-          e.patient.lastName === record.patient.lastName &&
+          e.patient?.firstName === record.patient?.firstName &&
+          e.patient?.lastName === record.patient?.lastName &&
           e.id !== record.id
         )
         if (targetEntry && !targetEntry.returned) {
@@ -134,10 +142,10 @@ export default function EntryPage() {
         const apptDate = record.appointmentDate.slice(0, 10)
         const existingEntries = getByDate(apptDate)
         const alreadyExists = existingEntries.some(e =>
-          e.patient.firstName === record.patient.firstName &&
-          e.patient.lastName === record.patient.lastName &&
-          e.patient.platoon === record.patient.platoon &&
-          e.patient.number === record.patient.number
+          e.patient?.firstName === record.patient?.firstName &&
+          e.patient?.lastName === record.patient?.lastName &&
+          e.patient?.platoon === record.patient?.platoon &&
+          e.patient?.number === record.patient?.number
         )
 
         if (!alreadyExists) {
@@ -160,7 +168,7 @@ export default function EntryPage() {
             notes: noteText.trim(),
             appointmentTime: record.appointmentTime || ''
           })
-          message = 'บันทึกกลับและลงนัดหมายล่วงหน้าเรียบร้อย ✅'
+          message = 'บันทึกกลับและลงนัดหมายล่วงหน้าเรียบร้อย'
         }
       }
     }
@@ -183,29 +191,41 @@ export default function EntryPage() {
         <button
           id="back-btn"
           className="btn btn-ghost btn-icon"
-          onClick={() => navigate('/')}
+          onClick={() => router.push('/')}
         >
           <ArrowLeft size={20} />
         </button>
         <div>
           <div className="page-title">
-            {isToday ? '📋 ส่งป่วยวันนี้' : '📋 ส่งป่วย'}
+            {isToday ? 'ส่งป่วยวันนี้' : 'ส่งป่วย'}
           </div>
           <div className="page-subtitle">{thaiDateFull(date)}</div>
         </div>
-        <button
-          id="add-patient-btn"
-          className="btn btn-primary btn-sm"
-          onClick={() => { setEditEntry(null); setShowForm(true) }}
-        >
-          <Plus size={12} />
-          เพิ่มผู้ป่วย
-        </button>
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => window.dispatchEvent(new CustomEvent('open_export_modal', { detail: { date } }))}
+            title="ส่งออกรายงานส่งป่วยประจำวันนี้เป็น Excel"
+          >
+            <FileSpreadsheet size={13} />
+            <span>ส่งออก Excel</span>
+          </button>
+          <button
+            id="add-patient-btn"
+            className="btn btn-primary btn-sm"
+            onClick={() => { setEditEntry(null); setShowForm(true) }}
+          >
+            <Plus size={12} />
+            <span>เพิ่มผู้ป่วย</span>
+          </button>
+        </div>
       </div>
 
       {/* Entry Meta Banner */}
       <div className="entry-meta">
-        <div className="entry-meta-icon">🏥</div>
+        <div className="entry-meta-icon">
+          <Building2 size={24} color="white" />
+        </div>
         <div style={{ flex: 1 }}>
           <div className="entry-meta-date">ยอดส่งป่วย</div>
           <div className="entry-meta-sub">รายชื่อผู้ป่วย {entries.length} นาย</div>
@@ -240,20 +260,20 @@ export default function EntryPage() {
             className={`tab ${activeTab === 'list' ? 'active' : ''}`}
             onClick={() => setActiveTab('list')}
           >
-            📋 รายชื่อ
+            รายชื่อ
           </button>
           <button
             className={`tab ${activeTab === 'report' ? 'active' : ''}`}
             onClick={() => setActiveTab('report')}
           >
-            📄 ส่งป่วย
+            ส่งป่วย
           </button>
           <button
             className={`tab ${activeTab === 'return' ? 'active' : ''}`}
             onClick={() => setActiveTab('return')}
             style={{ position: 'relative' }}
           >
-            🏠 ส่งกลับ
+            ส่งกลับ
             {notReturnedCount > 0 && (
               <span style={{
                 position: 'absolute', top: '2px', right: '4px',
@@ -276,7 +296,9 @@ export default function EntryPage() {
             </div>
           ) : entries.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-state-icon">🏥</div>
+              <div className="empty-state-icon">
+                <Building2 size={48} />
+              </div>
               <h3>ยังไม่มีผู้ป่วยวันนี้</h3>
               <p>กดปุ่ม "เพิ่ม" เพื่อบันทึกรายชื่อผู้ป่วย</p>
               <button
@@ -360,7 +382,7 @@ export default function EntryPage() {
                             title={entry.returned ? 'แก้ไขการกลับ' : 'บันทึกกลับ'}
                             id={`return-${entry.id}`}
                           >
-                            🏠
+                            <Home size={15} />
                           </button>
                           <button
                             className="btn btn-ghost btn-icon btn-sm"
@@ -393,7 +415,7 @@ export default function EntryPage() {
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     style={{ opacity: currentPage === 1 ? 0.5 : 1 }}
                   >
-                    ◀ ก่อนหน้า
+                    ก่อนหน้า
                   </button>
                   <span style={{ fontSize: '0.875rem', color: 'var(--gray-600)', fontWeight: 600 }}>
                     หน้า {currentPage} จาก {totalPages}
@@ -404,7 +426,7 @@ export default function EntryPage() {
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     style={{ opacity: currentPage === totalPages ? 0.5 : 1 }}
                   >
-                    ถัดไป ▶
+                    ถัดไป
                   </button>
                 </div>
               )}
@@ -434,7 +456,7 @@ export default function EntryPage() {
         onClick={() => { setEditEntry(null); setShowForm(true) }}
         title="เพิ่มผู้ป่วย"
       >
-        +
+        <Plus size={24} />
       </button>
 
       {/* Patient Form Modal */}
@@ -462,7 +484,6 @@ export default function EntryPage() {
           <div className="modal" style={{ maxHeight: 'auto', borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0' }}>
             <div className="modal-body" style={{ padding: '2rem 1.5rem' }}>
               <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                {/* <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🗑️</div> */}
                 <h3 style={{ marginBottom: '0.5rem' }}>ลบรายการนี้?</h3>
                 <p style={{ color: 'var(--gray-500)', fontSize: '0.875rem' }}>การกระทำนี้ไม่สามารถยกเลิกได้</p>
               </div>
@@ -496,3 +517,4 @@ export default function EntryPage() {
     </SyncContext.Provider>
   )
 }
+
