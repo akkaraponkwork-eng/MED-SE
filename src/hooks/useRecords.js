@@ -1,22 +1,23 @@
-// ===== useRecords Hook =====
-// จัดการสถานะและ CRUD สำหรับบันทึกส่งป่วยพร้อม cache ใน localStorage
-import { useState, useEffect, useCallback } from 'react'
+'use client'
+
+// ===== useRecords & usePatients Hooks =====
+import { useState, useEffect, useCallback, useContext } from 'react'
 import * as api from '../services/api'
 import { DEFAULT_PATIENTS } from '@/data/defaultPatients'
+import { RecordsContext } from './recordsContext'
 
 const CACHE_KEY = 'med_records_cache'
 const PATIENTS_KEY = 'med_patients_cache'
+const PATIENTS_SOURCE_KEY = 'med_patients_source'
 
 // แปลง time ไม่ว่า format ไหน → HH:MM (24 ชม.)
 function normalizeTime(val) {
   if (!val) return ''
   const s = String(val).trim()
-  // HH:MM หรือ H:MM
   if (/^\d{1,2}:\d{2}/.test(s)) {
     const [h, m] = s.split(':')
     return `${String(h).padStart(2, '0')}:${m.slice(0, 2)}`
   }
-  // Date string เช่น "Sat Dec 30 1899 09:00:00 GMT+0642"
   const dt = new Date(s)
   if (!isNaN(dt.getTime())) {
     return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`
@@ -43,7 +44,6 @@ function normalizeDate(val) {
 function normalizeRecord(r) {
   if (!r) return null
   let patientObj = r.patient || {}
-  // ป้องกันกรณี patient ถูกบันทึกเป็น string จาก cache หรือ API
   if (typeof patientObj === 'string') {
     try { patientObj = JSON.parse(patientObj) } catch { patientObj = {} }
   }
@@ -75,73 +75,51 @@ function saveCache(key, data) {
   try { localStorage.setItem(key, JSON.stringify(data)) } catch {}
 }
 
-const PATIENTS_SOURCE_KEY = 'web_med_patients_source_v2'
-
 export function usePatients() {
-  const [patients, setPatients] = useState(() => loadCache(PATIENTS_KEY) || DEFAULT_PATIENTS)
+  const [patients, setPatients] = useState(() => {
+    const cached = loadCache(PATIENTS_KEY)
+    if (cached && Array.isArray(cached) && cached.length > 0) return cached
+    return DEFAULT_PATIENTS
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  // รับการแจ้งเตือนเมื่อมีการบันทึกรายชื่อใหม่จากหน้าอื่น
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const handleUpdate = (e) => {
-      const updated = e.detail || loadCache(PATIENTS_KEY)
-      if (Array.isArray(updated) && updated.length > 0) {
-        setPatients(updated)
-      }
-    }
-
-    window.addEventListener('patients_updated', handleUpdate)
-    window.addEventListener('storage', handleUpdate)
-    return () => {
-      window.removeEventListener('patients_updated', handleUpdate)
-      window.removeEventListener('storage', handleUpdate)
-    }
-  }, [])
-
-  const fetchPatients = useCallback(async (force = false) => {
+  const fetchPatients = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const data = await api.getPatientList()
       if (Array.isArray(data) && data.length > 0) {
-        const localSource = loadCache(PATIENTS_SOURCE_KEY)
-        const localCache = loadCache(PATIENTS_KEY)
+        const source = loadCache(PATIENTS_SOURCE_KEY)
+        const hasCodeInRemote = data.some(p => p.code && p.code.trim() !== '')
 
-        // หากผู้ใช้เพิ่งนำเข้ารายชื่อใหม่ในเครื่อง (imported) และไม่ได้กด force sync
-        // ให้ตรวจสอบว่า Google Sheet เป็นข้อมูลใหม่หรือไม่ ถ้ายังเป็นผลัดเก่า ไม่ให้ทับข้อมูลที่นำเข้า
-        if (!force && localSource === 'imported' && Array.isArray(localCache) && localCache.length > 0) {
-          // ถ้าข้อมูลจาก Google Sheet ไม่มี code แต่ข้อมูลในเครื่องมี code แสดงว่า Sheet ยังไม่ได้อัปเดต
-          const localHasCode = localCache.some(p => p.code)
-          const remoteHasCode = data.some(p => p.code)
-          if (localHasCode && !remoteHasCode) {
-            console.warn('Google Sheet ยังเป็นข้อมูลผลัดเดิม จึงเก็บข้อมูลที่นำเข้าล่าสุดไว้')
-            return
-          }
+        if (source === 'imported' && !hasCodeInRemote) {
+          console.log('[usePatients] ข้อมูลท้องถิ่นมาจากการ Import และ Google Sheet ยังเป็นข้อมูลเก่า — คงข้อมูล Import ไว้')
+        } else {
+          setPatients(data)
+          saveCache(PATIENTS_KEY, data)
         }
-
-        setPatients(data)
-        saveCache(PATIENTS_KEY, data)
-        saveCache(PATIENTS_SOURCE_KEY, 'sheet')
-      } else if (!loadCache(PATIENTS_KEY)) {
-        // ถ้า Sheet ว่างและยังไม่มีใน cache ให้ใช้ default
-        saveCache(PATIENTS_KEY, DEFAULT_PATIENTS)
-        saveCache(PATIENTS_SOURCE_KEY, 'default')
       }
     } catch (err) {
       setError(err.message)
-      if (!loadCache(PATIENTS_KEY)) {
-        saveCache(PATIENTS_KEY, DEFAULT_PATIENTS)
-        saveCache(PATIENTS_SOURCE_KEY, 'default')
-      }
     } finally {
       setLoading(false)
     }
   }, [])
 
-  useEffect(() => { fetchPatients() }, [fetchPatients])
+  useEffect(() => {
+    fetchPatients()
+
+    const handlePatientsUpdated = (e) => {
+      if (e.detail && Array.isArray(e.detail)) {
+        setPatients(e.detail)
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('patients_updated', handlePatientsUpdated)
+      return () => window.removeEventListener('patients_updated', handlePatientsUpdated)
+    }
+  }, [fetchPatients])
 
   const savePatientsList = useCallback(async (newPatients, syncToSheet = true) => {
     const formatted = newPatients.map((p, idx) => ({
@@ -162,7 +140,6 @@ export function usePatients() {
     saveCache(PATIENTS_KEY, formatted)
     saveCache(PATIENTS_SOURCE_KEY, 'imported')
 
-    // แจ้งเตือนทุก Component ให้ใช้รายชื่อใหม่ทันที
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('patients_updated', { detail: formatted }))
     }
@@ -194,89 +171,11 @@ export function usePatients() {
   }
 }
 
-// syncStatus: 'synced' | 'syncing' | 'offline'
+// Hook สำหรับดึง state records จาก Context
 export function useRecords() {
-  const [records, setRecords] = useState(() => {
-    const cached = loadCache(CACHE_KEY) || []
-    return cached.map(normalizeRecord).filter(Boolean)
-  })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [syncStatus, setSyncStatus] = useState('synced')
-
-  const fetchAll = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    setSyncStatus('syncing')
-    try {
-      const data = await api.getAllRecords()
-      const normalized = data.map(normalizeRecord).filter(Boolean)
-      setRecords(normalized)
-      saveCache(CACHE_KEY, normalized)
-      setSyncStatus('synced')
-    } catch (err) {
-      setError(err.message)
-      setSyncStatus('offline')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => { fetchAll() }, [fetchAll])
-
-  const getByDate = useCallback((date) => {
-    return records.filter(r => r.date === date)
-  }, [records])
-
-  const getDatesWithRecords = useCallback(() => {
-    const dates = new Set(records.map(r => r.date))
-    return [...dates]
-  }, [records])
-
-  const add = useCallback(async (record) => {
-    const newRecord = normalizeRecord({ ...record, id: Date.now().toString() + Math.random().toString().slice(2, 6) })
-    setRecords(prev => {
-      const updated = [...prev, newRecord]
-      saveCache(CACHE_KEY, updated)
-      return updated
-    })
-    try {
-      await api.addRecord(newRecord)
-      setSyncStatus('synced')
-    } catch {
-      setSyncStatus('offline')
-    }
-    return newRecord
-  }, [])
-
-  const update = useCallback(async (record) => {
-    const normalized = normalizeRecord(record)
-    setRecords(prev => {
-      const updated = prev.map(r => r.id === normalized.id ? normalized : r)
-      saveCache(CACHE_KEY, updated)
-      return updated
-    })
-    try {
-      await api.updateRecord(normalized)
-      setSyncStatus('synced')
-    } catch {
-      setSyncStatus('offline')
-    }
-  }, [])
-
-  const remove = useCallback(async (id) => {
-    setRecords(prev => {
-      const updated = prev.filter(r => r.id !== id)
-      saveCache(CACHE_KEY, updated)
-      return updated
-    })
-    try {
-      await api.deleteRecord(id)
-      setSyncStatus('synced')
-    } catch {
-      setSyncStatus('offline')
-    }
-  }, [])
-
-  return { records, loading, error, syncStatus, getByDate, getDatesWithRecords, add, update, remove, refetch: fetchAll }
+  const context = useContext(RecordsContext)
+  if (!context) {
+    throw new Error('useRecords must be used within a RecordsProvider')
+  }
+  return context
 }

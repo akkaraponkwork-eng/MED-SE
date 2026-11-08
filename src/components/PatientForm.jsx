@@ -66,6 +66,7 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
     noAppointment: editData ? editData.noAppointment : true,
     appointmentText: editData?.patient?.appointmentText || editData?.appointmentText || '',
     isEveryday: editData?.patient?.isEveryday || false,
+    session: editData?.patient?.session || (new Date().getHours() < 12 ? 'เช้า' : 'บ่าย'),
   })
 
   // กรองรายชื่อทหารทั้งจากคำค้นหาและหมวด
@@ -121,7 +122,8 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
       patient: {
         ...selected,
         appointmentText: apptType === 'text' ? form.appointmentText : '',
-        isEveryday: apptType === 'text' && form.isEveryday
+        isEveryday: apptType === 'text' && form.isEveryday,
+        session: form.session
       },
       appointmentDate: apptType === 'none' ? '' : form.appointmentDate,
       appointmentTime: apptType === 'none' ? '' : form.appointmentTime,
@@ -129,6 +131,7 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
     }
     delete record.appointmentText
     delete record.isEveryday
+    delete record.session
     onSave(record)
   }
 
@@ -437,10 +440,49 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
                 </div>
               </div>
 
+              {/* Session Selector (ช่วงเวลาส่งป่วย) */}
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label className="form-label" style={{ marginBottom: '0.4rem', fontWeight: 700 }}>ช่วงเวลาส่งป่วย</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {['เช้า', 'บ่าย'].map(sess => {
+                    const active = form.session === sess
+                    return (
+                      <button
+                        key={sess}
+                        type="button"
+                        id={`session-${sess === 'เช้า' ? 'morning' : 'afternoon'}`}
+                        onClick={() => handleChange('session', sess)}
+                        style={{
+                          flex: 1,
+                          minHeight: '44px',
+                          padding: '0.65rem',
+                          borderRadius: 'var(--radius-md)',
+                          border: active
+                            ? '2px solid var(--green-500)'
+                            : '1.5px solid var(--gray-200)',
+                          background: active
+                            ? 'linear-gradient(135deg, var(--green-500), var(--green-600))'
+                            : 'white',
+                          color: active ? 'white' : 'var(--gray-700)',
+                          fontFamily: 'var(--font-th)',
+                          fontSize: '0.9rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          boxShadow: active ? '0 4px 12px rgba(22,163,74,0.3)' : 'none',
+                        }}
+                      >
+                        ช่วง{sess} {sess === 'เช้า' ? '(ก่อน 12:00 น.)' : '(หลัง 12:00 น.)'}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
               {/* Symptoms Input + Quick Chips */}
               <div className="form-group" style={{ marginBottom: '1.25rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                  <label className="form-label" style={{ marginBottom: 0 }}>อาการ</label>
+                  <label className="form-label" style={{ marginBottom: 0, fontWeight: 700 }}>อาการ</label>
                   <span style={{ fontSize: '0.75rem', color: 'var(--gray-400)' }}>แตะตัวเลือกด่วนด้านล่างได้</span>
                 </div>
 
@@ -466,7 +508,6 @@ export default function PatientForm({ date, onSave, onClose, editData }) {
                     )
                   })}
                 </div>
-
                 <textarea
                   id="symptoms-input"
                   className="form-control"

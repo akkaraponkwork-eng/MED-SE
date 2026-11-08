@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Login from '@/components/Login'
 import Layout from '@/components/Layout'
+import { RecordsProvider } from '@/hooks/recordsContext'
 
 const AUTH_KEY = 'med_auth_user'
 
@@ -35,8 +36,10 @@ export default function AppShell({ children }) {
   }
 
   return (
-    <Layout user={user} onLogout={handleLogout}>
-      {children}
-    </Layout>
+    <RecordsProvider>
+      <Layout user={user} onLogout={handleLogout}>
+        {children}
+      </Layout>
+    </RecordsProvider>
   )
 }
