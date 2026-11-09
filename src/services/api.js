@@ -1,6 +1,6 @@
 // ===== Google Apps Script API Service =====
 // แก้ไข SCRIPT_URL ด้วย URL จาก Google Apps Script ที่ deploy แล้ว
-const SCRIPT_URL = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || ''
+const SCRIPT_URL = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbwVeyzNEoWMaSZ0UO7h0rzzIjPMTifkX6UY9mjZWWU3O45Z9RguRtjrHSRefMVN7OJx/exec'
 
 const TIMEOUT_MS = 15000  // 15 วินาที
 const MAX_RETRIES = 2     // retry สูงสุด 2 รอบ
