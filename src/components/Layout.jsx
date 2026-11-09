@@ -65,22 +65,22 @@ export default function Layout({ children, user, onLogout }) {
 
         <div className="navbar-actions">
           <button
-            className="btn btn-ghost btn-icon btn-sm"
+            className="btn btn-ghost btn-icon btn-sm nav-desktop-only"
             onClick={() => { setExportDefaultDate(null); setShowExportModal(true) }}
             title="ส่งออกข้อมูลเป็นไฟล์ Excel (Multi-Sheet)"
             style={{ color: 'var(--green-700)' }}
           >
             <FileSpreadsheet size={18} />
           </button>
-          <Link href="/patients" className="btn btn-ghost btn-icon btn-sm" title="จัดการรายชื่อทหาร / เปลี่ยนผลัด" style={{ color: 'var(--green-700)' }}>
+          <Link href="/patients" className="btn btn-ghost btn-icon btn-sm nav-desktop-only" title="จัดการรายชื่อทหาร / เปลี่ยนผลัด" style={{ color: 'var(--green-700)' }}>
             <Users size={18} />
           </Link>
-          <Link href="/calendar" className="btn btn-ghost btn-icon btn-sm" title="ปฏิทิน" style={{ color: 'var(--green-700)' }}>
+          <Link href="/calendar" className="btn btn-ghost btn-icon btn-sm nav-desktop-only" title="ปฏิทิน" style={{ color: 'var(--green-700)' }}>
             <Calendar size={18} />
           </Link>
           <div className="navbar-user">
             <User size={13} />
-            {user}
+            <span>{user}</span>
           </div>
           <button
             className="btn btn-ghost btn-icon btn-sm"
@@ -145,6 +145,7 @@ export default function Layout({ children, user, onLogout }) {
         borderTop: '1px solid var(--gray-100)',
         background: 'white',
         padding: '0.5rem 0',
+        paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom, 0px))',
         position: 'sticky',
         bottom: 0,
         zIndex: 90,
