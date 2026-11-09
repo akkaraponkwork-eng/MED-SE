@@ -206,6 +206,17 @@ function parseTextToRows(text) {
   return rows
 }
 
+function isPlatoonMatch(patientPlatoon, targetPlatoon) {
+  if (!patientPlatoon || !targetPlatoon) return false
+  const pStr = String(patientPlatoon).trim()
+  const tStr = String(targetPlatoon).trim()
+  if (pStr === tStr) return true
+  const pNum = pStr.replace(/[^0-9]/g, '')
+  const tNum = tStr.replace(/[^0-9]/g, '')
+  if (pNum && tNum && pNum === tNum) return true
+  return false
+}
+
 export default function PatientsPage() {
   const router = useRouter()
   const { patients, loading, savePatientsList, resetPatientsToDefault } = usePatients()
@@ -309,7 +320,7 @@ export default function PatientsPage() {
     return patients.filter(p => {
       if (selectedPlatoon === 'มีโรคประจำตัว') {
         if (!p.disease || p.disease === '-') return false
-      } else if (selectedPlatoon !== 'ทั้งหมด' && p.platoon !== selectedPlatoon) {
+      } else if (selectedPlatoon !== 'ทั้งหมด' && !isPlatoonMatch(p.platoon, selectedPlatoon)) {
         return false
       }
 
@@ -324,7 +335,7 @@ export default function PatientsPage() {
   const countsByPlatoon = useMemo(() => {
     const counts = { ทั้งหมด: patients.length, มีโรคประจำตัว: diseaseCount }
     PLATOON_CHOICES.forEach(pl => {
-      counts[pl] = patients.filter(p => p.platoon === pl).length
+      counts[pl] = patients.filter(p => isPlatoonMatch(p.platoon, pl)).length
     })
     return counts
   }, [patients, diseaseCount])
@@ -350,7 +361,8 @@ export default function PatientsPage() {
       
       let msg = `นำเข้ารายชื่อสำเร็จ ${parsedPreview.length} นาย`
       if (res.syncError) {
-        msg += ' (บันทึกลงระบบแล้ว แต่การซิงค์ Google Sheet ขัดข้อง)'
+        msg += ' (บันทึกลงระบบในเครื่องแล้ว แต่การซิงค์ Google Sheet ขัดข้อง)'
+        alert('นำเข้ารายชื่อลงในเครื่องเรียบร้อยแล้ว แต่ Google Sheet ยังไม่บันทึก:\n' + res.syncError)
       } else if (syncToSheet) {
         msg += ' และอัปเดต Google Sheet เรียบร้อย'
       }

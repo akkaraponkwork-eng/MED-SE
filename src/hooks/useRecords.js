@@ -93,11 +93,18 @@ export function usePatients() {
         const source = loadCache(PATIENTS_SOURCE_KEY)
         const hasCodeInRemote = data.some(p => p.code && p.code.trim() !== '')
 
+        const normalizedRemote = data.map(p => ({
+          ...p,
+          platoon: p.platoon && /^\d+$/.test(String(p.platoon).trim())
+            ? `หมวด ${String(p.platoon).trim()}`
+            : (p.platoon || 'หมวด 1')
+        }))
+
         if (source === 'imported' && !hasCodeInRemote) {
           console.log('[usePatients] ข้อมูลท้องถิ่นมาจากการ Import และ Google Sheet ยังเป็นข้อมูลเก่า — คงข้อมูล Import ไว้')
         } else {
-          setPatients(data)
-          saveCache(PATIENTS_KEY, data)
+          setPatients(normalizedRemote)
+          saveCache(PATIENTS_KEY, normalizedRemote)
         }
       }
     } catch (err) {
@@ -122,13 +129,20 @@ export function usePatients() {
   }, [fetchPatients])
 
   const savePatientsList = useCallback(async (newPatients, syncToSheet = true) => {
+    const formatPlatoon = (val) => {
+      if (!val) return 'หมวด 1'
+      const s = String(val).trim()
+      if (/^\d+$/.test(s)) return `หมวด ${s}`
+      return s
+    }
+
     const formatted = newPatients.map((p, idx) => ({
       id: p.id || `p${idx + 1}`,
       code: (p.code || '').trim(),
       rank: (p.rank || 'พลฯ').trim(),
       firstName: (p.firstName || '').trim(),
       lastName: (p.lastName || '').trim(),
-      platoon: (p.platoon || 'หมวด 1').trim(),
+      platoon: formatPlatoon(p.platoon),
       number: String(p.number || '').trim(),
       unit: (p.unit || '').trim(),
       citizenId: String(p.citizenId || '').trim(),
